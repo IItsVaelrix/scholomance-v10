@@ -1,0 +1,70 @@
+:root {
+  --z-base: 0;
+  --z-content: 10;
+  --z-hud: 40;
+  --z-overlay: 70;
+  --z-modal: 90;
+}
+
+.layer-base { z-index: var(--z-base); }
+.layer-content { z-index: var(--z-content); }
+.layer-hud { z-index: var(--z-hud); }
+.layer-overlay { z-index: var(--z-overlay); }
+.layer-modal { z-index: var(--z-modal); }
+
+[data-role="hud"] { z-index: var(--z-hud); }
+
+[data-role="overlay"] {
+  z-index: var(--z-overlay);
+}
+
+.school-void {
+  --school-accent: var(--void);
+  --school-accent-soft: rgba(161, 161, 170, 0.18);
+  --school-accent-glow: rgba(161, 161, 170, 0.45);
+  --dial-angle: 0deg;
+}
+
+.school-psychic {
+  --school-accent: var(--psychic);
+  --school-accent-soft: rgba(0, 229, 255, 0.2);
+  --school-accent-glow: rgba(0, 229, 255, 0.55);
+  --dial-angle: 72deg;
+}
+
+.school-alchemy {
+  --school-accent: var(--alchemy);
+  --school-accent-soft: rgba(213, 0, 249, 0.2);
+  --school-accent-glow: rgba(213, 0, 249, 0.55);
+  --dial-angle: 144deg;
+}
+
+.school-will {
+  --school-accent: var(--will);
+  --school-accent-soft: rgba(255, 138, 0, 0.2);
+  --school-accent-glow: rgba(255, 138, 0, 0.55);
+  --dial-angle: 216deg;
+}
+
+.school-sonic {
+  --school-accent: var(--sonic);
+  --school-accent-soft: rgba(101, 31, 255, 0.2);
+  --school-accent-glow: rgba(101, 31, 255, 0.55);
+  --dial-angle: 288deg;
+}
+
+.vowel-a { --annotation-accent: var(--vowel-A); }
+.vowel-ae { --annotation-accent: var(--vowel-AE); }
+.vowel-ao { --annotation-accent: var(--vowel-AO); }
+.vowel-aw { --annotation-accent: var(--vowel-AW); }
+.vowel-ay { --annotation-accent: var(--vowel-AY); }
+.vowel-eh { --annotation-accent: var(--vowel-EH); }
+.vowel-er { --annotation-accent: var(--vowel-ER); }
+.vowel-ey { --annotation-accent: var(--vowel-EY); }
+.vowel-ih { --annotation-accent: var(--vowel-IH); }
+.vowel-iy { --annotation-accent: var(--vowel-IY); }
+.vowel-oh { --annotation-accent: var(--vowel-OH); }
+.vowel-ow { --annotation-accent: var(--vowel-OW); }
+.vowel-oy { --annotation-accent: var(--vowel-OY); }
+.vowel-uh { --annotation-accent: var(--vowel-UH); }
+.vowel-uw { --annotation-accent: var(--vowel-UW); }

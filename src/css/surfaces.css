@@ -1,0 +1,32 @@
+.surface {
+  position: relative;
+  z-index: var(--z-content);
+}
+
+[data-surface] {
+  isolation: isolate;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-hud);
+}
+
+.app-main {
+  flex: 1;
+}
+
+.app-footer {
+  min-height: 0;
+}
+
+.page-shell {
+  width: 100%;
+}

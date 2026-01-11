@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs:*)",
+      "Bash(wc:*)",
+      "Bash(test:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}

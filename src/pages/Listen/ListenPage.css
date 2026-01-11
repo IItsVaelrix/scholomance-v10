@@ -1,0 +1,662 @@
+/* === LISTEN PAGE: SCI-FI RETRO-FUTURISM === */
+
+.page-theme--listen {
+  /* Nixie tube warm colors */
+  --nixie-glow: #ff6b35;
+  --nixie-warm: #ffa500;
+  --nixie-cathode: #1a1008;
+  --nixie-glass: rgba(255, 200, 150, 0.08);
+
+  /* Brass/copper steampunk palette */
+  --brass-base: #b8860b;
+  --brass-light: #d4a532;
+  --brass-dark: #8b6914;
+  --copper-patina: #4a7c59;
+  --copper-base: #b87333;
+
+  /* Holographic iridescence */
+  --holo-cyan: #00ffff;
+  --holo-magenta: #ff00ff;
+}
+
+.listenPage {
+  min-height: 100vh;
+  padding: 104px 0 88px;
+  display: grid;
+  align-items: center;
+}
+
+/* Main cabinet */
+.radio-cabinet {
+  position: relative;
+  background:
+    linear-gradient(180deg, #1a1612 0%, #0d0a08 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  border-radius: 20px;
+  padding: 24px;
+  border: 2px solid var(--brass-dark);
+  box-shadow:
+    inset 0 1px 0 var(--brass-light),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.5),
+    0 30px 80px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.radio-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.6;
+  background: radial-gradient(600px 400px at 30% 40%, var(--school-accent-soft), transparent 60%);
+  animation: radio-glow-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes radio-glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
+/* Cabinet screws */
+.cabinet-screws {
+  pointer-events: none;
+}
+
+.screw {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--brass-light), var(--brass-dark));
+  box-shadow:
+    inset 0 -2px 3px rgba(0, 0, 0, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.screw::after {
+  content: "+";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.4);
+  font-weight: bold;
+}
+
+.screw-tl { top: 12px; left: 12px; }
+.screw-tr { top: 12px; right: 12px; }
+.screw-bl { bottom: 12px; left: 12px; }
+.screw-br { bottom: 12px; right: 12px; }
+
+/* Nixie tube panel */
+.nixie-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4));
+  border-radius: 12px;
+  border: 1px solid rgba(255, 165, 0, 0.15);
+}
+
+.nixie-label,
+.nixie-unit {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: rgba(255, 165, 0, 0.5);
+  text-transform: uppercase;
+}
+
+.nixie-display {
+  display: flex;
+  gap: 6px;
+}
+
+/* Nixie tube */
+.nixie-tube {
+  position: relative;
+  width: 44px;
+  height: 68px;
+  background: linear-gradient(
+    180deg,
+    var(--nixie-cathode) 0%,
+    rgba(15, 10, 5, 0.98) 100%
+  );
+  border-radius: 8px 8px 4px 4px;
+  border: 1px solid rgba(255, 165, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow:
+    inset 0 -8px 20px rgba(255, 107, 53, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.nixie-tube--decimal {
+  width: 20px;
+}
+
+.nixie-glass {
+  position: absolute;
+  inset: 3px;
+  border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 200, 150, 0.06) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+.nixie-reflection {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  right: 6px;
+  height: 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.nixie-digit {
+  font-family: var(--mono);
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--nixie-glow);
+  text-shadow:
+    0 0 5px var(--nixie-glow),
+    0 0 15px var(--nixie-warm),
+    0 0 30px rgba(255, 107, 53, 0.5),
+    0 0 50px rgba(255, 107, 53, 0.3);
+}
+
+/* Main control layout */
+.radio-main {
+  display: grid;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 960px) {
+  .radio-main {
+    grid-template-columns: 260px 1fr;
+    align-items: start;
+  }
+}
+
+/* Dial section */
+.dial-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Brass dial container */
+.brass-dial-container {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Gear ring */
+.gear-ring {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  pointer-events: none;
+}
+
+.gear-tooth {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 16px;
+  background: linear-gradient(90deg, var(--brass-dark), var(--brass-base), var(--brass-dark));
+  border-radius: 2px;
+  transform-origin: center center;
+}
+
+/* Main dial */
+.brass-dial {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    var(--brass-dark) 0deg,
+    var(--brass-light) 30deg,
+    var(--brass-base) 60deg,
+    var(--brass-dark) 90deg,
+    var(--brass-light) 120deg,
+    var(--brass-base) 150deg,
+    var(--brass-dark) 180deg,
+    var(--brass-light) 210deg,
+    var(--brass-base) 240deg,
+    var(--brass-dark) 270deg,
+    var(--brass-light) 300deg,
+    var(--brass-base) 330deg,
+    var(--brass-dark) 360deg
+  );
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.3),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.4),
+    0 10px 40px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  transform: rotate(var(--dial-angle));
+  transition: transform 0.45s ease;
+}
+
+.brass-dial:hover {
+  transform: rotate(var(--dial-angle)) scale(1.02);
+}
+
+.brass-dial:active {
+  transform: rotate(var(--dial-angle)) scale(0.98);
+}
+
+/* Dial engravings */
+.dial-engravings {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.dial-marking {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: rgba(0, 0, 0, 0.6);
+  transform-origin: center center;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Center knob */
+.dial-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 35%,
+    var(--brass-light) 0%,
+    var(--brass-base) 50%,
+    var(--brass-dark) 100%
+  );
+  box-shadow:
+    inset 0 -3px 6px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.dial-knob {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 40% 40%,
+    var(--brass-light),
+    var(--brass-dark)
+  );
+}
+
+.knob-grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 20%,
+    rgba(0, 0, 0, 0.3) 20%,
+    rgba(0, 0, 0, 0.3) 80%,
+    transparent 80%
+  );
+  transform-origin: center center;
+  transform: translate(-50%, -50%);
+}
+
+/* Needle */
+.dial-needle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 35px;
+  background: linear-gradient(180deg, #ff4444, #cc0000);
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+}
+
+/* Dial label */
+.dial-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.dial-school {
+  font-family: var(--mono);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px currentColor;
+  color: var(--school-accent);
+}
+
+.dial-status {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: var(--nixie-glow);
+  text-shadow: 0 0 8px var(--nixie-glow);
+}
+
+/* Rivets */
+.rivet {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    var(--brass-light) 0%,
+    var(--brass-dark) 100%
+  );
+  box-shadow:
+    inset 0 -1px 2px rgba(0, 0, 0, 0.5),
+    0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+.rivet--dial {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+}
+
+/* Player section */
+.player-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.player-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.player-title {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+/* Oscilloscope */
+.oscilloscope {
+  position: relative;
+  height: 50px;
+  background: rgba(0, 10, 0, 0.8);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(57, 255, 20, 0.2);
+}
+
+.oscilloscope-grid {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(57, 255, 20, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57, 255, 20, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.oscilloscope-wave {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, var(--school-accent) 2%, transparent 4%);
+  animation: oscilloscope-scan 2s linear infinite;
+}
+
+@keyframes oscilloscope-scan {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(200%); }
+}
+
+/* Holographic panel */
+.holo-panel {
+  position: relative;
+  border-radius: 16px;
+  padding: 3px;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 255, 255, 0.15) 0%,
+    rgba(255, 0, 255, 0.15) 25%,
+    rgba(255, 255, 0, 0.1) 50%,
+    rgba(0, 255, 255, 0.15) 75%,
+    rgba(255, 0, 255, 0.15) 100%
+  );
+  background-size: 200% 200%;
+  animation: holo-shift 6s ease-in-out infinite;
+  overflow: hidden;
+}
+
+@keyframes holo-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.holo-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    45deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
+  );
+  animation: holo-shine 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes holo-shine {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  100% { transform: translateX(200%) rotate(45deg); }
+}
+
+.holo-panel-inner {
+  background: rgba(10, 10, 20, 0.95);
+  border-radius: 13px;
+  overflow: hidden;
+}
+
+.holo-embed {
+  width: 100%;
+  height: 120px;
+  border: 0;
+  display: block;
+}
+
+.holo-scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(0, 255, 255, 0.3);
+  animation: holo-scanline 4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes holo-scanline {
+  0% { top: 0; opacity: 0.5; }
+  50% { opacity: 0.8; }
+  100% { top: 100%; opacity: 0.5; }
+}
+
+/* Vacuum tube visualizer */
+.vacuum-visualizer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  height: 72px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 165, 0, 0.1);
+}
+
+.vacuum-bar {
+  width: 8px;
+  border-radius: 4px;
+  min-height: 10px;
+  background: linear-gradient(to top, var(--school-accent), var(--school-accent-soft));
+  box-shadow: 0 0 10px var(--school-accent-glow);
+}
+
+/* Track panel */
+.track-panel {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.5));
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255, 165, 0, 0.1);
+}
+
+.track-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.track-panel-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: rgba(255, 165, 0, 0.6);
+  text-transform: uppercase;
+}
+
+.trackGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.trackCard {
+  text-align: left;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 165, 0, 0.15);
+  background: linear-gradient(180deg, rgba(26, 22, 18, 0.8), rgba(13, 10, 8, 0.9));
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.trackCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 165, 0, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.trackCard:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.trackCardActive {
+  border-color: var(--brass-base);
+  box-shadow:
+    0 0 0 1px var(--brass-dark) inset,
+    0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.trackTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.vacuum-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--school-accent);
+  box-shadow: 0 0 8px var(--school-accent-glow);
+}
+
+.trackTitle {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0;
+  color: var(--text);
+}
+
+.trackMeta {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 165, 0, 0.5);
+  text-transform: uppercase;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .radio-cabinet {
+    padding: 16px;
+  }
+
+  .nixie-panel {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .brass-dial-container {
+    width: 180px;
+    height: 180px;
+  }
+
+  .brass-dial {
+    width: 140px;
+    height: 140px;
+  }
+
+  .gear-ring {
+    width: 180px;
+    height: 180px;
+  }
+
+  .gear-tooth {
+    transform: rotate(var(--rot)) translateY(-88px);
+  }
+}

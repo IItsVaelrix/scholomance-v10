@@ -1,0 +1,97 @@
+/* Navigation Component Styles */
+
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-hud);
+  backdrop-filter: blur(14px);
+  background: linear-gradient(180deg, rgba(8, 8, 18, 0.76), rgba(8, 8, 18, 0.42));
+  border-bottom: 1px solid var(--stroke-soft);
+}
+
+.navInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+}
+
+.navBrand {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--text);
+  cursor: pointer;
+  transition: opacity 180ms ease;
+}
+
+.navBrand:hover {
+  opacity: 0.85;
+}
+
+.sigil {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: conic-gradient(
+    from 220deg,
+    var(--sonic),
+    var(--psychic),
+    var(--will),
+    var(--alchemy),
+    var(--sonic)
+  );
+  box-shadow: 0 0 18px rgba(101, 31, 255, 0.35);
+}
+
+.navLinks {
+  display: inline-flex;
+  gap: 10px;
+  padding: 6px;
+  border: 1px solid var(--stroke-soft);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.navItem {
+  position: relative;
+}
+
+.navLink {
+  position: relative;
+  font-family: var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 12px;
+  padding: 10px 14px;
+  color: rgba(238, 240, 255, 0.7);
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 180ms ease;
+}
+
+.navLink:hover {
+  color: rgba(238, 240, 255, 0.95);
+}
+
+.navPill {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.22);
+  z-index: -1;
+}
+
+.navLinkActive {
+  color: #090913;
+}
