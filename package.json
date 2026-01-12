@@ -9,13 +9,22 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "node ./node_modules/vite/bin/vite.js preview",
     "cmudict:convert": "node tools/scripts/convert_cmudict.js",
-    "cmudict:validate": "node tools/scripts/validate_cmudict.js"
+    "cmudict:validate": "node tools/scripts/validate_cmudict.js",
+    "test:unit": "node ./node_modules/vitest/vitest.mjs run",
+    "test:ui": "node ./node_modules/vitest/vitest.mjs run --config vitest.ui.config.js",
+    "test:e2e": "node ./node_modules/@playwright/test/cli.js test",
+    "test:visual": "node tools/visual/run_visual.js",
+    "test:visual:update": "VISUAL_UPDATE=1 node tools/visual/run_visual.js",
+    "test:visual:playwright": "node ./node_modules/@playwright/test/cli.js test --config playwright.config.visual.js",
+    "qa": "npm run test:unit && npm run test:ui && npm run test:visual"
   },
   "dependencies": {
+    "@lexical/react": "^0.39.0",
     "framer-motion": "^10.16.4",
+    "lexical": "^0.39.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^7.12.0",
+    "react-router-dom": "^6.24.0",
     "react-use": "^17.6.0"
   },
   "devDependencies": {
@@ -24,10 +33,20 @@
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.3",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "eslint": "^8.45.0",
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.3",
-    "vite": "^7.3.1"
+    "happy-dom": "^14.12.0",
+    "jsdom": "^27.4.0",
+    "pixelmatch": "^5.3.0",
+    "pngjs": "^7.0.0",
+    "puppeteer": "^24.10.0",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.16"
   }
 }

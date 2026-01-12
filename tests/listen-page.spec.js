@@ -6,26 +6,24 @@ test.describe('Listen Page', () => {
   });
 
   test('should display radio interface', async ({ page }) => {
-    await expect(page.locator('text=/frequency|tune/i')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /tune the school/i })).toBeVisible();
   });
 
   test('should show current frequency in nixie tubes', async ({ page }) => {
-    const nixieDisplay = page.locator('.nixie-display, .nixie-panel');
-    await expect(nixieDisplay).toBeVisible();
+    await expect(page.locator('.nixie-panel')).toBeVisible();
   });
 
   test('should display track selection grid', async ({ page }) => {
-    const trackGrid = page.locator('.trackGrid, .track-panel');
-    await expect(trackGrid).toBeVisible();
+    await expect(page.locator('.track-panel')).toBeVisible();
 
     // Should have multiple tracks
-    const trackCards = page.locator('.trackCard, button:has-text("FREQ")');
+    const trackCards = page.locator('.trackCard');
     await expect(trackCards.first()).toBeVisible();
   });
 
   test('should switch tracks when clicked', async ({ page }) => {
     // Find all track cards
-    const trackCards = page.locator('.trackCard, button[class*="track"]');
+    const trackCards = page.locator('.track-panel .trackCard');
     const count = await trackCards.count();
 
     if (count > 1) {
@@ -36,43 +34,26 @@ test.describe('Listen Page', () => {
       await page.waitForTimeout(500);
 
       // Should have an active track
-      const activeTrack = page.locator('.trackCardActive, [class*="Active"]');
+      const activeTrack = page.locator('.track-panel .trackCardActive');
       await expect(activeTrack).toBeVisible();
     }
   });
 
   test('should show school name', async ({ page }) => {
-    // Should display one of the school names
-    const schools = ['VOID', 'PSYCHIC', 'ALCHEMY', 'WILL', 'SONIC'];
-    let foundSchool = false;
-
-    for (const school of schools) {
-      const schoolText = page.locator(`text=${school}`);
-      if (await schoolText.count() > 0) {
-        foundSchool = true;
-        break;
-      }
-    }
-
-    expect(foundSchool).toBe(true);
+    await expect(page.locator('.dial-school')).toHaveText(/VOID|PSYCHIC|ALCHEMY|WILL|SONIC/);
   });
 
   test('should display visualizer bars', async ({ page }) => {
-    const visualizer = page.locator('.vacuum-visualizer, .oscilloscope, [class*="visualiz"]');
-    if (await visualizer.count() > 0) {
-      await expect(visualizer.first()).toBeVisible();
-    }
+    await expect(page.locator('.vacuum-visualizer')).toBeVisible();
+    await expect(page.locator('.vacuum-bar').first()).toBeVisible();
   });
 
   test('should show brass dial control', async ({ page }) => {
-    const dial = page.locator('.dial-section, .brass-gear, [class*="dial"]');
-    if (await dial.count() > 0) {
-      await expect(dial.first()).toBeVisible();
-    }
+    await expect(page.locator('.dial-section')).toBeVisible();
   });
 
   test('should prevent rapid track switching', async ({ page }) => {
-    const trackCards = page.locator('.trackCard, button[class*="track"]');
+    const trackCards = page.locator('.track-panel .trackCard');
     const count = await trackCards.count();
 
     if (count > 1) {

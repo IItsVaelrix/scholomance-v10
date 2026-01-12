@@ -95,3 +95,21 @@
 .navLinkActive {
   color: #090913;
 }
+
+@media (max-width: 720px) {
+  .navInner {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 0;
+  }
+
+  .navLinks {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .navLink {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+}

@@ -62,7 +62,7 @@ function buildRecord(phonemes, mapping) {
   phonemes.forEach((ph, idx) => {
     if (isVowel(ph)) {
       lastVowelIndex = idx;
-      vowelFamilies.push(mapping[ph] || "A");
+      vowelFamilies.push(mapping[ph] || "UH");
     }
   });
 

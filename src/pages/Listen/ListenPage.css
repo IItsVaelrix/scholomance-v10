@@ -656,6 +656,10 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .listenPage {
+    padding: 88px 0 72px;
+  }
+
   .radio-cabinet {
     padding: 16px;
   }

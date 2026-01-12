@@ -272,6 +272,10 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .watchPage {
+    padding: 88px 0 72px;
+  }
+
   .crt-monitor {
     padding: 16px;
     border-radius: 16px;

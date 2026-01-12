@@ -1,23 +1,169 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { motion } from "framer-motion";
 import { SCROLL_LIMITS } from "../../data/scrollLimits";
+import { getEvidenceValue } from "../../engines/colorEngine/index.ts";
+
+const escapeHtml = (value) =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const normalizeEditorText = (value) => String(value || "").replace(/\r\n/g, "\n");
+
+const buildEditorMarkup = (text, decorations = []) => {
+  if (!text) return "";
+  const lines = String(text).split("\n");
+  let decorationIndex = 0;
+  return lines
+    .map((line, index) => {
+      if (!line) {
+        return `<div class="editor-line" data-line="${index}"><br></div>`;
+      }
+      const wordRegex = /[A-Za-z']+/g;
+      const wordMatches = Array.from(line.matchAll(wordRegex));
+      const lineDecorations = wordMatches.map(() => decorations[decorationIndex++] || null);
+      const rhymeCounts = lineDecorations.reduce((acc, decoration) => {
+        const rhymeKey = getEvidenceValue(decoration?.result || null, "rhyme");
+        if (!rhymeKey) return acc;
+        acc[rhymeKey] = (acc[rhymeKey] || 0) + 1;
+        return acc;
+      }, {});
+      let html = "";
+      let lastIndex = 0;
+      let wordIndex = 0;
+      line.replace(wordRegex, (match, offset) => {
+        const before = line.slice(lastIndex, offset);
+        if (before) {
+          html += escapeHtml(before);
+        }
+        const decoration = lineDecorations[wordIndex];
+        const result = decoration?.result || null;
+        const rhymeKey = getEvidenceValue(result, "rhyme");
+        const isRhyming = rhymeKey && rhymeCounts[rhymeKey] > 1;
+        const baseClasses = result?.classes?.length ? result.classes : ["editor-word"];
+        const textClass = isRhyming ? result?.channels?.text?.className : "";
+        const feelClass = result?.channels?.accent?.className || "";
+        const classes = [
+          ...new Set([...baseClasses, textClass, feelClass, feelClass ? "has-feel" : ""]),
+        ]
+          .filter(Boolean)
+          .join(" ");
+        html += `<span class="${classes}">${escapeHtml(match)}</span>`;
+        lastIndex = offset + match.length;
+        wordIndex += 1;
+        return match;
+      });
+      const tail = line.slice(lastIndex);
+      if (tail) {
+        html += escapeHtml(tail);
+      }
+      return `<div class="editor-line" data-line="${index}">${html || "<br>"}</div>`;
+    })
+    .join("");
+};
+
+const getRenderDelay = (length) => {
+  if (length > 8000) return 300;
+  if (length > 3000) return 220;
+  if (length > 1200) return 150;
+  return 80;
+};
+
+const getCaretOffset = (root) => {
+  const selection = window.getSelection?.();
+  if (!selection || selection.rangeCount === 0 || !root) return null;
+  const range = selection.getRangeAt(0);
+  const startNode = range.startContainer;
+  const lineEl =
+    (startNode.nodeType === Node.TEXT_NODE
+      ? startNode.parentElement?.closest(".editor-line")
+      : startNode.closest?.(".editor-line")) || null;
+  if (!lineEl || !root.contains(lineEl)) return null;
+  const lines = Array.from(root.children);
+  const lineIndex = lines.indexOf(lineEl);
+  if (lineIndex < 0) return null;
+  const lineRange = range.cloneRange();
+  lineRange.selectNodeContents(lineEl);
+  lineRange.setEnd(range.startContainer, range.startOffset);
+  const lineOffset = lineRange.toString().length;
+  let offset = lineOffset;
+  for (let i = 0; i < lineIndex; i += 1) {
+    offset += lines[i].innerText.length + 1;
+  }
+  return offset;
+};
+
+const setCaretOffset = (root, offset) => {
+  if (offset === null || offset === undefined || !root) return;
+  const selection = window.getSelection?.();
+  if (!selection) return;
+  const lines = Array.from(root.children);
+  let remaining = offset;
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const lineLength = line.innerText.length;
+    if (remaining <= lineLength) {
+      const range = document.createRange();
+      const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      let current = 0;
+      while (node) {
+        const textLength = node.textContent?.length || 0;
+        const next = current + textLength;
+        if (remaining <= next) {
+          range.setStart(node, Math.max(0, remaining - current));
+          range.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(range);
+          return;
+        }
+        current = next;
+        node = walker.nextNode();
+      }
+      range.selectNodeContents(line);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return;
+    }
+    remaining -= lineLength + 1;
+  }
+  const endRange = document.createRange();
+  endRange.selectNodeContents(root);
+  endRange.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(endRange);
+};
 
 export default function ScrollEditor({
   initialTitle = "",
   initialContent = "",
   onSave,
+  onContentChange,
   onCancel,
   isEditing = false,
   disabled = false,
+  colorEngine = null,
+  engineRevision = 0,
+  onWordClick,
 }) {
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [isSaving, setIsSaving] = useState(false);
   const [validationError, setValidationError] = useState(null);
-  const textareaRef = useRef(null);
+  const editorRef = useRef(null);
   const prevLengthRef = useRef(initialContent.length);
   const effectTimeoutRef = useRef(null);
+  const renderTimeoutRef = useRef(null);
+  const caretRef = useRef(null);
+  const isComposingRef = useRef(false);
   const [inkEffect, setInkEffect] = useState(null);
+  const [renderedContent, setRenderedContent] = useState(() =>
+    buildEditorMarkup(initialContent, [])
+  );
 
   useEffect(() => {
     setTitle(initialTitle);
@@ -26,8 +172,8 @@ export default function ScrollEditor({
   }, [initialTitle, initialContent]);
 
   useEffect(() => {
-    if (textareaRef.current && !initialContent) {
-      textareaRef.current.focus();
+    if (editorRef.current && !initialContent) {
+      editorRef.current.focus();
     }
   }, [initialContent]);
 
@@ -36,23 +182,55 @@ export default function ScrollEditor({
       if (effectTimeoutRef.current) {
         clearTimeout(effectTimeoutRef.current);
       }
+      if (renderTimeoutRef.current) {
+        clearTimeout(renderTimeoutRef.current);
+      }
     };
   }, []);
+  useEffect(() => {
+    if (renderTimeoutRef.current) {
+      clearTimeout(renderTimeoutRef.current);
+    }
+    const delay = getRenderDelay(content.length);
+    renderTimeoutRef.current = setTimeout(() => {
+      try {
+        const decorations = colorEngine ? colorEngine.decorateText(content).decorations : [];
+        setRenderedContent(buildEditorMarkup(content, decorations));
+      } catch (e) {
+        console.error("Error building editor markup:", e);
+        // Fallback to un-highlighted text to prevent crash
+        setRenderedContent(escapeHtml(content).replace(/\n/g, '<br>'));
+      }
+    }, delay);
+  }, [content, colorEngine, engineRevision, disabled]);
+
+  useLayoutEffect(() => {
+    if (caretRef.current !== null) {
+      setCaretOffset(editorRef.current, caretRef.current);
+      caretRef.current = null;
+    }
+  }, [renderedContent]);
 
   const handleSave = async () => {
     setValidationError(null);
 
     // Validation
     if (!content.trim()) {
-      setValidationError("Content cannot be empty");
+      setValidationError({ field: "content", message: "Content cannot be empty" });
       return;
     }
     if (title.length > SCROLL_LIMITS.title) {
-      setValidationError(`Title must be ${SCROLL_LIMITS.title} characters or less`);
+      setValidationError({
+        field: "title",
+        message: `Title must be ${SCROLL_LIMITS.title} characters or less`,
+      });
       return;
     }
     if (content.length > SCROLL_LIMITS.content) {
-      setValidationError(`Content must be ${SCROLL_LIMITS.content.toLocaleString()} characters or less`);
+      setValidationError({
+        field: "content",
+        message: `Content must be ${SCROLL_LIMITS.content.toLocaleString()} characters or less`,
+      });
       return;
     }
 
@@ -61,7 +239,10 @@ export default function ScrollEditor({
       await onSave?.(title.trim(), content.trim());
       setValidationError(null);
     } catch (err) {
-      setValidationError(err.message || "Failed to save scroll");
+      setValidationError({
+        field: "form",
+        message: err.message || "Failed to save scroll",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -92,18 +273,59 @@ export default function ScrollEditor({
 
   const handleContentChange = (value) => {
     const prevLength = prevLengthRef.current;
-    setContent(value);
-    if (value.length > prevLength) {
+    const nextValue =
+      value.length > SCROLL_LIMITS.content ? value.slice(0, SCROLL_LIMITS.content) : value;
+    setContent(nextValue);
+    onContentChange?.(nextValue);
+    if (nextValue.length > prevLength) {
       triggerInkEffect("ink");
-    } else if (value.length < prevLength) {
+    } else if (nextValue.length < prevLength) {
       triggerInkEffect("ash");
     }
-    prevLengthRef.current = value.length;
+    prevLengthRef.current = nextValue.length;
   };
+
+  const handleInput = (event) => {
+    if (disabled || isSaving || isComposingRef.current) return;
+    caretRef.current = getCaretOffset(editorRef.current);
+    const rawText = normalizeEditorText(event.currentTarget.innerText);
+    handleContentChange(rawText);
+  };
+
+  const handlePaste = (event) => {
+    if (disabled || isSaving) return;
+    event.preventDefault();
+    const text = normalizeEditorText(event.clipboardData.getData("text/plain"));
+    document.execCommand("insertText", false, text);
+  };
+
+  const handleCompositionStart = () => {
+    isComposingRef.current = true;
+  };
+
+  const handleCompositionEnd = (event) => {
+    isComposingRef.current = false;
+    handleInput(event);
+  };
+
+  const handleWordClick = (e) => {
+    if (disabled || isSaving) return;
+    const target = e.target;
+    if (target.classList.contains("editor-word")) {
+      const word = target.innerText;
+      onWordClick?.(word);
+    }
+  };
+
+  const titleError = validationError?.field === "title";
+  const contentError = validationError?.field === "content";
+  const formError = validationError?.field === "form";
 
   return (
     <motion.div
-      className={`scroll-editor surface ${content.trim() ? "has-text" : "is-empty"} ${inkEffect ? `ink-${inkEffect}` : ""}`}
+      className={`scroll-editor surface ${content.trim() ? "has-text" : "is-empty"} ${
+        inkEffect ? `ink-${inkEffect}` : ""
+      }`}
       data-surface="editor"
       data-role="editor"
       initial={{ opacity: 0, y: 10 }}
@@ -112,14 +334,20 @@ export default function ScrollEditor({
       transition={{ duration: 0.2 }}
     >
       <div className="editor-header">
+        <label htmlFor="scroll-title" className="sr-only">
+          Scroll Title
+        </label>
         <input
           type="text"
+          id="scroll-title"
           className="editor-title-input"
           placeholder="Scroll Title..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           disabled={disabled || isSaving}
           maxLength={SCROLL_LIMITS.title}
+          aria-invalid={titleError}
+          aria-describedby={titleError ? "editor-error-message" : undefined}
         />
         <div className="editor-stats">
           <span className="stat-badge">{wordCount} words</span>
@@ -129,10 +357,10 @@ export default function ScrollEditor({
         </div>
       </div>
 
-      {validationError && (
-        <div className="editor-validation-error">
+      {(validationError) && (
+        <div id="editor-error-message" className="editor-validation-error" role="alert">
           <span className="error-sigil">⚠</span>
-          {validationError}
+          {validationError.message}
         </div>
       )}
 
@@ -142,18 +370,32 @@ export default function ScrollEditor({
           <span className="margin-glyph">&#x263D;</span>
           <span className="margin-glyph">&#x2641;</span>
         </div>
-        <textarea
-          ref={textareaRef}
-          className="editor-textarea"
-          placeholder="Inscribe thy verses upon this sacred parchment...
+        <label htmlFor="scroll-content" className="sr-only">
+          Scroll Content
+        </label>
+        <div
+          ref={editorRef}
+          id="scroll-content"
+          className="editor-content"
+          data-placeholder="Inscribe thy verses upon this sacred parchment...
 
 Click any word after saving to analyze its phonetic structure."
-          value={content}
-          onChange={(e) => handleContentChange(e.target.value)}
+          contentEditable={!disabled && !isSaving}
+          suppressContentEditableWarning
+          role="textbox"
+          aria-multiline="true"
+          aria-invalid={contentError}
+          aria-describedby={contentError ? "editor-error-message" : undefined}
+          aria-disabled={disabled || isSaving}
+          tabIndex={disabled || isSaving ? -1 : 0}
+          onInput={handleInput}
+          onClick={handleWordClick}
           onKeyDown={handleKeyDown}
-          disabled={disabled || isSaving}
-          maxLength={SCROLL_LIMITS.content}
+          onPaste={handlePaste}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           spellCheck="false"
+          dangerouslySetInnerHTML={{ __html: renderedContent }}
         />
       </div>
 

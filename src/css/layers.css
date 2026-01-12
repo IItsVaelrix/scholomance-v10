@@ -68,3 +68,51 @@
 .vowel-oy { --annotation-accent: var(--vowel-OY); }
 .vowel-uh { --annotation-accent: var(--vowel-UH); }
 .vowel-uw { --annotation-accent: var(--vowel-UW); }
+
+.feel-unknown {
+  --feel-accent: var(--feel-neutral);
+  --feel-glow: var(--feel-neutral-glow);
+  --feel-border: var(--feel-neutral-border);
+}
+
+.feel-neutral {
+  --feel-accent: var(--feel-neutral);
+  --feel-glow: var(--feel-neutral-glow);
+  --feel-border: var(--feel-neutral-border);
+}
+
+.feel-joy {
+  --feel-accent: var(--feel-joy);
+  --feel-glow: var(--feel-joy-glow);
+  --feel-border: var(--feel-joy-border);
+}
+
+.feel-sorrow {
+  --feel-accent: var(--feel-sorrow);
+  --feel-glow: var(--feel-sorrow-glow);
+  --feel-border: var(--feel-sorrow-border);
+}
+
+.feel-rage {
+  --feel-accent: var(--feel-rage);
+  --feel-glow: var(--feel-rage-glow);
+  --feel-border: var(--feel-rage-border);
+}
+
+.feel-fear {
+  --feel-accent: var(--feel-fear);
+  --feel-glow: var(--feel-fear-glow);
+  --feel-border: var(--feel-fear-border);
+}
+
+.feel-awe {
+  --feel-accent: var(--feel-awe);
+  --feel-glow: var(--feel-awe-glow);
+  --feel-border: var(--feel-awe-border);
+}
+
+.feel-desire {
+  --feel-accent: var(--feel-desire);
+  --feel-glow: var(--feel-desire-glow);
+  --feel-border: var(--feel-desire-border);
+}

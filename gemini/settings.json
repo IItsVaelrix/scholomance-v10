@@ -1,0 +1,4 @@
+{
+  "permissions": ["read", "write"],
+  "roots": ["/home/deck/Desktop/scholomance-v10-main"]
+}

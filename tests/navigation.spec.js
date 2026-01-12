@@ -4,21 +4,21 @@ test.describe('Navigation', () => {
   test('should navigate to Watch page by default', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveURL(/\/(watch)?$/);
-    await expect(page.locator('h1')).toContainText(/watch|monitor/i);
+    await expect(page.locator('h1')).toContainText(/ritual ui/i);
   });
 
   test('should navigate to Listen page', async ({ page }) => {
     await page.goto('/');
-    await page.click('text=Listen');
+    await page.getByRole('link', { name: 'Listen' }).click();
     await expect(page).toHaveURL(/\/listen/);
-    await expect(page.locator('h1')).toContainText(/tune|frequency/i);
+    await expect(page.getByRole('heading', { name: /tune the school/i })).toBeVisible();
   });
 
   test('should navigate to Read page', async ({ page }) => {
     await page.goto('/');
-    await page.click('text=Read');
+    await page.getByRole('link', { name: 'Read' }).click();
     await expect(page).toHaveURL(/\/read/);
-    await expect(page.locator('h1')).toContainText(/scribe|analyze/i);
+    await expect(page.locator('#scroll-title')).toBeVisible();
   });
 
   test('should highlight active navigation item', async ({ page }) => {

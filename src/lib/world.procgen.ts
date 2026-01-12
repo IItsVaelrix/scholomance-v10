@@ -108,7 +108,6 @@ function makeEntity(
       return makeMonster(rng, scroll, metrics, nodeType === "ARENA" ? "ELITE" : "COMMON", allocId("M"));
     case "ITEM":
       return makeContainerEntity(
-        rng,
         {
           id: allocId("I"),
           type: "ITEM",

@@ -22,15 +22,16 @@ export function hash32(str: string) {
 }
 
 export function computeScrollMetrics(scroll: ScrollInput): ScrollMetrics {
-  const text = normalizeText(scroll?.text || "");
+  const rawText = scroll?.text ?? scroll?.content ?? "";
+  const text = normalizeText(rawText);
   const tokens = tokenize(text);
   const unique = new Set(tokens);
 
   const tokenCount = tokens.length;
   const uniqueCount = unique.size;
-  const lineCount = (scroll?.text || "").split("\n").filter((l) => l.trim()).length;
+  const lineCount = rawText.split("\n").filter((l) => l.trim()).length;
 
-  const punctCount = (scroll?.text || "").match(/[!?.,;:]/g)?.length ?? 0;
+  const punctCount = rawText.match(/[!?.,;:]/g)?.length ?? 0;
   const volatility = tokenCount ? punctCount / tokenCount : 0;
 
   const raw = tokenCount * 0.6 + uniqueCount * 1.2 + lineCount * 3 + volatility * 200;

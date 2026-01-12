@@ -1,237 +1,259 @@
-import { useState, useCallback } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { usePhonemeEngine } from "../../hooks/usePhonemeEngine.jsx";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useColorEngine } from "../../hooks/useColorEngine.jsx";
 import { useScrolls } from "../../hooks/useScrolls.jsx";
-import GrimoireScroll from "./GrimoireScroll.jsx";
 import AnnotationPanel from "./AnnotationPanel.jsx";
 import ScrollEditor from "./ScrollEditor.jsx";
 import ScrollList from "./ScrollList.jsx";
+import { blendSchoolColor, getEvidenceValue } from "../../engines/colorEngine/index.ts";
 import { buildStateClasses } from "../../js/stateClasses.js";
 import "./ReadPage.css";
 
+const RHYME_IDLE_MS = 2250;
+const MAX_ANALYSIS_TOKENS = 160;
+const BASE_SCORES = {
+  VOID: 1,
+  PSYCHIC: 0,
+  ALCHEMY: 0,
+  WILL: 0,
+  SONIC: 0,
+};
+
 export default function ReadPage() {
-  const { isReady, error, engine } = usePhonemeEngine();
+  const { isReady, engine: colorEngine, revision } = useColorEngine();
   const { scrolls, createScroll, updateScroll, deleteScroll, getScrollById } = useScrolls();
 
   const [annotation, setAnnotation] = useState(null);
   const [activeScrollId, setActiveScrollId] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [viewMode, setViewMode] = useState("editor"); // "editor" | "viewer"
-  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [rhymeSchool, setRhymeSchool] = useState("VOID");
+  const [rhymeScores, setRhymeScores] = useState(BASE_SCORES);
+  const [isIdle, setIsIdle] = useState(true);
+  const idleTimerRef = useRef(null);
+  const annotationRequestRef = useRef(0);
+  const isEditing = !!activeScrollId;
 
   const activeScroll = activeScrollId ? getScrollById(activeScrollId) : null;
 
+  useEffect(() => {
+    // Auto-load the most recently updated scroll on refresh.
+    // This keeps the writing "session" feeling persistent.
+    if (!activeScrollId && scrolls.length) {
+      setActiveScrollId(scrolls[0].id);
+    }
+  }, [activeScrollId, scrolls]);
+
+  const analyzeRhymeProfile = useCallback(
+    (text) => {
+      if (!text?.trim() || !colorEngine?.getTokenResult) {
+        return { scores: BASE_SCORES, dominant: "VOID" };
+      }
+
+      const tokens = (text.match(/[A-Za-z']+/g) || []).slice(-MAX_ANALYSIS_TOKENS);
+      if (!tokens.length) {
+        return { scores: BASE_SCORES, dominant: "VOID" };
+      }
+
+      const analyses = tokens
+        .map((token) => colorEngine.getTokenResult(token))
+        .filter(Boolean)
+        .map((result) => {
+          const rhymeKey = getEvidenceValue(result, "rhyme");
+          const phonemeValue = getEvidenceValue(result, "phoneme");
+          const phonemeCount = phonemeValue
+            ? phonemeValue.split(/\s+/).filter(Boolean).length
+            : 0;
+          const codaEvidence = result.evidence.find(
+            (item) => item.type === "phoneme" && item.value.startsWith("coda:")
+          );
+          const coda = codaEvidence ? codaEvidence.value.slice(5) : null;
+          const codaGroups = result.evidence
+            .filter((item) => item.type === "usage" && item.value.startsWith("coda-group:"))
+            .map((item) => item.value.slice("coda-group:".length));
+          const school =
+            result.chips.find((chip) => chip.type === "school")?.label || "VOID";
+          return {
+            coda,
+            codaGroups,
+            rhymeKey,
+            phonemeCount,
+            school,
+          };
+        });
+
+      if (!analyses.length) {
+        return { scores: BASE_SCORES, dominant: "VOID" };
+      }
+
+      const interactionBoosts = new Array(analyses.length).fill(0);
+      for (let i = 1; i < analyses.length; i++) {
+        const prev = analyses[i - 1];
+        const curr = analyses[i];
+        let boost = 0;
+        if (prev.rhymeKey && curr.rhymeKey && prev.rhymeKey === curr.rhymeKey) {
+          boost = 0.6;
+        } else if (prev.coda && curr.coda) {
+          const sharesGroup =
+            prev.codaGroups?.length &&
+            curr.codaGroups?.length &&
+            prev.codaGroups.some((group) => curr.codaGroups.includes(group));
+          if (sharesGroup || prev.coda === curr.coda) {
+            boost = 0.35;
+          }
+        }
+        if (boost) {
+          interactionBoosts[i] += boost;
+          interactionBoosts[i - 1] += boost * 0.6;
+        }
+      }
+
+      const scores = { VOID: 0, PSYCHIC: 0, ALCHEMY: 0, WILL: 0, SONIC: 0 };
+      analyses.forEach((result, index) => {
+        const codaTokens = result.coda ? result.coda.split(/[^A-Z]+/).filter(Boolean) : [];
+        const codaWeight = Math.min(1.2, codaTokens.length * 0.35);
+        const phonemeWeight = Math.min(0.8, Math.max(0, result.phonemeCount - 2) * 0.06);
+        const wordScore = 1 + codaWeight + phonemeWeight + interactionBoosts[index];
+        scores[result.school] += wordScore;
+      });
+
+      let dominant = "VOID";
+      let maxScore = -1;
+      Object.entries(scores).forEach(([school, score]) => {
+        if (score > maxScore) {
+          maxScore = score;
+          dominant = school;
+        }
+      });
+
+      return { scores, dominant };
+    },
+    [colorEngine]
+  );
+
+  const handleIdleAnalyze = useCallback(
+    (value) => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => {
+        if (!value?.trim()) {
+          setRhymeScores(BASE_SCORES);
+          setRhymeSchool("VOID");
+          return;
+        }
+        const { scores, dominant } = analyzeRhymeProfile(value);
+        setRhymeScores(scores);
+        setRhymeSchool(dominant);
+        setIsIdle(true);
+      }, RHYME_IDLE_MS);
+    },
+    [analyzeRhymeProfile]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
+
+  const rhymeStyle = useMemo(() => {
+    const [r, g, b] = blendSchoolColor(rhymeScores);
+    const accent = `rgb(${r}, ${g}, ${b})`;
+    const soft = `rgba(${r}, ${g}, ${b}, 0.18)`;
+    const glow = `rgba(${r}, ${g}, ${b}, 0.45)`;
+    return {
+      "--school-accent": accent,
+      "--school-accent-soft": soft,
+      "--school-accent-glow": glow,
+    };
+  }, [rhymeScores]);
+
   const analyze = useCallback(
     (word) => {
-      const clean = String(word || "")
-        .replace(/[^A-Za-z']/g, "")
-        .toUpperCase();
-      if (!clean) return;
-
-      const result = engine.analyzeWord(clean);
-      if (result) {
-        setAnnotation({
-          word: clean,
-          ...result,
-          rhymeKey: result.rhymeKey ?? `${result.vowelFamily}-${result.coda ?? ""}`,
-        });
-      }
+      if (!colorEngine?.getTokenResult) return;
+      const result = colorEngine.getTokenResult(word);
+      setAnnotation(result);
+      const requestId = annotationRequestRef.current + 1;
+      annotationRequestRef.current = requestId;
+      colorEngine
+        .requestEnrichment(word)
+        .then(() => {
+          if (annotationRequestRef.current !== requestId) return;
+          setAnnotation(colorEngine.getTokenResult(word));
+        })
+        .catch(() => {});
     },
-    [engine]
+    [colorEngine]
   );
 
   const handleSaveScroll = useCallback(
     (title, content) => {
       if (isEditing && activeScrollId) {
         updateScroll(activeScrollId, { title, content });
-        setIsEditing(false);
-        setViewMode("viewer");
       } else {
         const newScroll = createScroll(title, content);
         setActiveScrollId(newScroll.id);
-        setViewMode("viewer");
+      }
+      // For now, let's analyze the first word of the content after saving.
+      const firstWord = content.split(/\s+/)[0];
+      if (firstWord) {
+        analyze(firstWord);
       }
     },
-    [isEditing, activeScrollId, updateScroll, createScroll]
+    [isEditing, activeScrollId, updateScroll, createScroll, analyze]
   );
 
-  const handleSelectScroll = useCallback((id) => {
-    setActiveScrollId(id);
-    setIsEditing(false);
-    setViewMode("viewer");
-    setAnnotation(null);
-    setIsLibraryOpen(false);
-  }, []);
-
-  const handleNewScroll = useCallback(() => {
-    setActiveScrollId(null);
-    setIsEditing(false);
-    setViewMode("editor");
-    setAnnotation(null);
-    setIsLibraryOpen(false);
-  }, []);
-
-  const handleEditScroll = useCallback(() => {
-    setIsEditing(true);
-    setViewMode("editor");
-  }, []);
-
-  const handleDeleteScroll = useCallback(
-    (id) => {
-      deleteScroll(id);
-      if (activeScrollId === id) {
-        setActiveScrollId(null);
-        setViewMode("editor");
-      }
-    },
-    [deleteScroll, activeScrollId]
-  );
-
-  const handleCancelEdit = useCallback(() => {
-    if (activeScrollId) {
-      setIsEditing(false);
-      setViewMode("viewer");
-    } else {
-      setViewMode("editor");
+  const handleDeleteScroll = useCallback((idToDelete) => {
+    deleteScroll(idToDelete);
+    if (activeScrollId === idToDelete) {
+      setActiveScrollId(null);
     }
-  }, [activeScrollId]);
+  }, [activeScrollId, deleteScroll]);
+
+  const handleNewScroll = () => {
+    setActiveScrollId(null);
+  };
 
   const stateClasses = buildStateClasses({
-    view: viewMode,
+    view: "editor",
     overlay: annotation ? "open" : "closed",
+    school: rhymeSchool,
   });
 
   return (
-    <section className={`writePage surface ${stateClasses}`} data-surface="write">
-      {/* Ambient candlelight */}
-      <div className="candle-ambience" aria-hidden="true" />
-      <div className="candle-ambience candle-ambience--secondary" aria-hidden="true" />
-
-      <article className="container write-container surface" data-surface="write-shell">
-        <header className="sectionHeader grimoire-header surface" data-surface="write-header">
-          <div className="kicker">The Arcane Codex</div>
-          <h1 className="title grimoire-title">
-            <span className="illuminated-letter">W</span>rite &amp; Analyze
-          </h1>
-          <p className="subtitle grimoire-subtitle">
-            Inscribe thy verses upon sacred scrolls. Each word becomes a portal —
-            click to unveil its vowel-family, phonemes, and rhyme key.
-          </p>
-          {!isReady && !error && (
-            <div className="engine-status loading">
-              <span className="status-sigil">⟳</span>
-              Loading phoneme engine...
-            </div>
-          )}
-          {error && (
-            <div className="engine-status error">
-              <span className="status-sigil">⚠</span>
-              Phoneme engine failed to load. Running in demo mode.
-            </div>
-          )}
-        </header>
-
-        <main className="write-stage surface" data-surface="workbench">
-          <AnimatePresence mode="wait">
-            {viewMode === "editor" ? (
-              <ScrollEditor
-                key={isEditing ? `edit-${activeScrollId}` : "new"}
-                initialTitle={isEditing && activeScroll ? activeScroll.title : ""}
-                initialContent={isEditing && activeScroll ? activeScroll.content : ""}
-                onSave={handleSaveScroll}
-                onCancel={isEditing ? handleCancelEdit : undefined}
-                isEditing={isEditing}
-                disabled={!isReady}
-              />
-            ) : activeScroll ? (
-              <article
-                key={`view-${activeScrollId}`}
-                className="scroll-viewer surface"
-                data-surface="spellbook"
-                data-role="spellbook"
-              >
-                <div className="viewer-header">
-                  <h2 className="viewer-title">{activeScroll.title}</h2>
-                  <button
-                    type="button"
-                    className="viewer-edit-btn"
-                    onClick={handleEditScroll}
-                  >
-                    <span>&#x270E;</span> Edit
-                  </button>
-                </div>
-                <GrimoireScroll
-                  text={activeScroll.content}
-                  onWordClick={analyze}
-                  disabled={!isReady}
-                  onAnalyzeEthereal={() => {
-                    const words = activeScroll.content.split(/\s+/);
-                    if (words.length > 0) analyze(words[0]);
-                  }}
-                  isEngineReady={isReady}
-                />
-              </article>
-            ) : (
-              <article className="scroll-placeholder surface" data-surface="empty">
-                <div className="placeholder-sigil">&#x1F4DC;</div>
-                <h3>Select or Create a Scroll</h3>
-                <p>Choose a scroll from the list or start a new inscription.</p>
-                <button
-                  type="button"
-                  className="grimoire-button"
-                  onClick={handleNewScroll}
-                >
-                  <span className="button-sigil">&#x271A;</span>
-                  Begin New Scroll
-                </button>
-              </article>
-            )}
-          </AnimatePresence>
-
-          <button
-            type="button"
-            className={`arcane-dresser ${isLibraryOpen ? "is-open" : ""}`}
-            onClick={() => setIsLibraryOpen((prev) => !prev)}
-            aria-expanded={isLibraryOpen}
-            aria-controls="scroll-library"
-          >
-            <span className="dresser-title">Archive Dresser</span>
-            <span className="dresser-hint">Tap to access scrolls</span>
-          </button>
-
-          <AnimatePresence>
-            {isLibraryOpen && (
-              <motion.aside
-                id="scroll-library"
-                className="library-drawer surface"
-                data-surface="library"
-                data-role="library"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 16 }}
-                transition={{ duration: 0.2 }}
-              >
-                <ScrollList
-                  scrolls={scrolls}
-                  activeScrollId={activeScrollId}
-                  onSelect={handleSelectScroll}
-                  onDelete={handleDeleteScroll}
-                  onNewScroll={handleNewScroll}
-                />
-              </motion.aside>
-            )}
-          </AnimatePresence>
-        </main>
-      </article>
-
-      <AnimatePresence>
-        {annotation && (
-          <AnnotationPanel
-            annotation={annotation}
-            onClose={() => setAnnotation(null)}
+    <section
+      className={`readPage surface ${stateClasses} ${isIdle ? "rhyme-idle" : ""}`}
+      data-surface="read"
+      style={rhymeStyle}
+    >
+      <div className="read-layout">
+        <aside className="read-sidebar">
+          <ScrollList
+            scrolls={scrolls}
+            activeScrollId={activeScrollId}
+            onSelect={setActiveScrollId}
+            onDelete={handleDeleteScroll}
+            onNewScroll={handleNewScroll}
           />
-        )}
-      </AnimatePresence>
+        </aside>
+        <main className="read-stage" data-surface="workbench">
+          <ScrollEditor
+            key={activeScrollId || "new"}
+            initialTitle={activeScroll ? activeScroll.title : ""}
+            initialContent={activeScroll ? activeScroll.content : ""}
+            onSave={handleSaveScroll}
+            onContentChange={handleIdleAnalyze}
+            onWordClick={analyze}
+            isEditing={isEditing}
+            disabled={!isReady}
+            colorEngine={colorEngine}
+            engineRevision={revision}
+          />
+        </main>
+      </div>
+
+      {annotation && (
+        <AnnotationPanel
+          annotation={annotation}
+          onClose={() => setAnnotation(null)}
+        />
+      )}
     </section>
   );
 }

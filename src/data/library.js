@@ -38,7 +38,7 @@ export const LIBRARY_STORAGE_KEY = "scholomance-library";
 export const LINKS = [
   { id: "watch", path: "/watch", label: "Watch" },
   { id: "listen", path: "/listen", label: "Listen" },
-  { id: "write", path: "/write", label: "Write" },
+  { id: "read", path: "/read", label: "Read" },
 ];
 
 export const COLORS = {

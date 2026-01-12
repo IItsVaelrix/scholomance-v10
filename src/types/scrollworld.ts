@@ -4,6 +4,7 @@ export type ScrollInput = {
   id?: string;
   title?: string;
   text?: string;
+  content?: string;
 };
 
 export type ScrollMetrics = {

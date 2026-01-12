@@ -48,6 +48,29 @@
   --vowel-UH: #00c853;
   --vowel-UW: #64ffda;
 
+  /* Feel palette (emotion channel) */
+  --feel-neutral: #9aa0a6;
+  --feel-neutral-glow: rgba(154, 160, 166, 0.25);
+  --feel-neutral-border: rgba(154, 160, 166, 0.45);
+  --feel-joy: #ffd166;
+  --feel-joy-glow: rgba(255, 209, 102, 0.35);
+  --feel-joy-border: rgba(255, 209, 102, 0.5);
+  --feel-sorrow: #5b7cfa;
+  --feel-sorrow-glow: rgba(91, 124, 250, 0.35);
+  --feel-sorrow-border: rgba(91, 124, 250, 0.5);
+  --feel-rage: #ff5d5d;
+  --feel-rage-glow: rgba(255, 93, 93, 0.35);
+  --feel-rage-border: rgba(255, 93, 93, 0.5);
+  --feel-fear: #6fcf97;
+  --feel-fear-glow: rgba(111, 207, 151, 0.35);
+  --feel-fear-border: rgba(111, 207, 151, 0.5);
+  --feel-awe: #5ad0c2;
+  --feel-awe-glow: rgba(90, 208, 194, 0.35);
+  --feel-awe-border: rgba(90, 208, 194, 0.5);
+  --feel-desire: #ff6fb1;
+  --feel-desire-glow: rgba(255, 111, 177, 0.35);
+  --feel-desire-border: rgba(255, 111, 177, 0.5);
+
   /* Typography */
   --sans: "Space Grotesk", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -57,8 +80,36 @@
   --radius-lg: 22px;
   --radius-md: 14px;
   --shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
-  --shadow-soft: 0 16px 50px rgba(0, 0, 0, 0.35);
+  --surface-error-bg: radial-gradient(circle at 50% 50%, #280000 0%, #1a0000 50%, #000 100%);
 }
+
+/* Accessibility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Test harness: disable motion and transitions during visual snapshots */
+:root[data-visual-test="true"] *, 
+:root[data-visual-test="true"] *::before,
+:root[data-visual-test="true"] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+:root[data-visual-test="true"] body,
+:root[data-visual-test="true"] body::before,
+:root[data-visual-test="true"] body::after {
+  animation: none !important;
+}
+
 
 /* Minimal reset */
 *, *::before, *::after { box-sizing: border-box; }

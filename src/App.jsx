@@ -1,8 +1,9 @@
+import React from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import Navigation from "./components/Navigation/Navigation.jsx";
 import { SongProvider } from "./hooks/useCurrentSong.jsx";
-import { PhonemeEngineProvider } from "./hooks/usePhonemeEngine.jsx";
+import { ColorEngineProvider } from "./hooks/useColorEngine.jsx";
 import { buildStateClasses } from "./js/stateClasses.js";
 
 const pageVariants = {
@@ -20,7 +21,7 @@ export default function App() {
   });
 
   return (
-    <PhonemeEngineProvider>
+    <ColorEngineProvider>
       <SongProvider>
         <div className={`app-shell ${stateClasses}`}>
           <header className="app-header surface" data-surface="header" data-role="hud">
@@ -38,13 +39,15 @@ export default function App() {
                 exit="exit"
                 transition={{ duration: 0.3, ease: "easeInOut" }}
               >
-                <Outlet />
+                <React.Suspense fallback={<div className="page-loading"><h1>Loading...</h1></div>}>
+                  <Outlet />
+                </React.Suspense>
               </motion.div>
             </AnimatePresence>
           </main>
           <footer className="app-footer surface" data-surface="footer" aria-hidden="true" />
         </div>
       </SongProvider>
-    </PhonemeEngineProvider>
+    </ColorEngineProvider>
   );
 }

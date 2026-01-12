@@ -82,12 +82,14 @@ export function useScrolls() {
             ? {
                 ...scroll,
                 ...updates,
-                title: updates.title
-                  ? String(updates.title).trim().slice(0, SCROLL_LIMITS.title)
-                  : scroll.title,
-                content: updates.content
-                  ? String(updates.content).trim().slice(0, SCROLL_LIMITS.content)
-                  : scroll.content,
+                title:
+                  updates.title !== undefined
+                    ? String(updates.title).trim().slice(0, SCROLL_LIMITS.title)
+                    : scroll.title,
+                content:
+                  updates.content !== undefined
+                    ? String(updates.content).trim().slice(0, SCROLL_LIMITS.content)
+                    : scroll.content,
                 updatedAt: Date.now(),
                 _version: SCHEMA_VERSION,
               }

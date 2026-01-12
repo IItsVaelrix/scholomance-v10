@@ -1,12 +1,14 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "./components/shared/ErrorBoundary.jsx";
 import App from "./App.jsx";
-import WatchPage from "./pages/Watch/WatchPage.jsx";
-import ListenPage from "./pages/Listen/ListenPage.jsx";
-import ReadPage from "./pages/Read/ReadPage.jsx";
 import "./index.css";
+
+// Lazy load the page components
+const WatchPage = lazy(() => import("./pages/Watch/WatchPage.jsx"));
+const ListenPage = lazy(() => import("./pages/Listen/ListenPage.jsx"));
+const ReadPage = lazy(() => import("./pages/Read/ReadPage.jsx"));
 
 const router = createBrowserRouter([
   {
@@ -16,11 +18,18 @@ const router = createBrowserRouter([
       { index: true, element: <WatchPage /> },
       { path: "watch", element: <WatchPage /> },
       { path: "listen", element: <ListenPage /> },
-      { path: "write", element: <ReadPage /> },
-      { path: "read", element: <Navigate to="/write" replace /> },
+      { path: "read", element: <ReadPage /> },
+      { path: "write", element: <Navigate to="/read" replace /> },
     ],
   },
 ]);
+
+// Simple loading fallback for suspense
+const PageLoading = () => (
+  <div className="page-loading">
+    <h1>Loading...</h1>
+  </div>
+);
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

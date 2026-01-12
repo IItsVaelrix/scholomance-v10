@@ -1,12 +1,45 @@
 import { motion } from "framer-motion";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, useEffect } from "react";
 import { getStateClass } from "../../js/stateClasses.js";
 
 export default function AnnotationPanel({ annotation, onClose }) {
-  const vowelClass = getStateClass("vowelFamily", annotation?.vowelFamily);
+  const vowelEvidence = annotation?.evidence?.find(
+    (item) => item.type === "usage" && item.value.startsWith("vowel:")
+  );
+  const vowelFamily = vowelEvidence ? vowelEvidence.value.slice(6) : "";
+  const vowelClass = getStateClass("vowelFamily", vowelFamily);
+  const phonemeEvidence = annotation?.evidence?.find(
+    (item) => item.type === "phoneme" && !item.value.startsWith("coda:")
+  );
+  const phonemes = phonemeEvidence?.value?.split(/\s+/).filter(Boolean) || [];
+  const rhymeKey = annotation?.evidence?.find((item) => item.type === "rhyme")?.value || "";
+  const definitions = annotation?.evidence
+    ?.filter((item) => item.type === "definition")
+    .map((item) => item.value) || [];
+  const codaEvidence = annotation?.evidence?.find(
+    (item) => item.type === "phoneme" && item.value.startsWith("coda:")
+  );
+  const coda = codaEvidence ? codaEvidence.value.slice(5) : null;
   const panelRef = useRef(null);
+  const closeButtonRef = useRef(null);
   const resizeRef = useRef(null);
   const [constraints, setConstraints] = useState(null);
+
+  // Handle keyboard events (Escape to close)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose?.();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  // Handle focus on open
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
 
   useLayoutEffect(() => {
     const updateConstraints = () => {
@@ -48,8 +81,10 @@ export default function AnnotationPanel({ annotation, onClose }) {
       dragConstraints={constraints || undefined}
       dragMomentum={false}
       dragElastic={0.12}
-      aria-label="Word annotation panel"
       ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="annotation-title"
     >
       {/* Leather panel texture */}
       <div className="aside-texture" aria-hidden="true" />
@@ -57,11 +92,17 @@ export default function AnnotationPanel({ annotation, onClose }) {
       <div className="analysis-shell" data-role="analysis">
         <div className="asideTop">
           <h3
+            id="annotation-title"
             className="asideTitle accent-text"
           >
-            {annotation.word}
+            {annotation.token}
           </h3>
-          <button className="close grimoire-close" onClick={onClose} aria-label="Close">
+          <button
+            ref={closeButtonRef}
+            className="close grimoire-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
             <span>&#x2715;</span>
           </button>
         </div>
@@ -75,7 +116,7 @@ export default function AnnotationPanel({ annotation, onClose }) {
             <div
               className="statValue accent-text"
             >
-              {annotation.vowelFamily}
+              {vowelFamily || "Unknown"}
             </div>
           </div>
 
@@ -85,7 +126,7 @@ export default function AnnotationPanel({ annotation, onClose }) {
               Phonemes
             </div>
             <div className="statValue phoneme-list">
-              {annotation.phonemes.map((p, i) => (
+              {phonemes.map((p, i) => (
                 <span key={i} className="phoneme-chip">
                   {p}
                 </span>
@@ -98,16 +139,32 @@ export default function AnnotationPanel({ annotation, onClose }) {
               <span className="stat-sigil">&#x2728;</span>
               Rhyme Key
             </div>
-            <div className="statValue rhyme-key">{annotation.rhymeKey}</div>
+            <div className="statValue rhyme-key">{rhymeKey || "Unknown"}</div>
           </div>
 
-          {annotation.coda && (
+          {definitions.length ? (
+            <div className="stat grimoire-stat">
+              <div className="statLabel">
+                <span className="stat-sigil">&#x2736;</span>
+                Definition
+              </div>
+              <div className="statValue definition-list">
+                {definitions.map((definition, index) => (
+                  <div key={index} className="definition-item">
+                    {definition}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {coda && (
             <div className="stat grimoire-stat">
               <div className="statLabel">
                 <span className="stat-sigil">&#x2729;</span>
                 Coda
               </div>
-              <div className="statValue">{annotation.coda}</div>
+              <div className="statValue">{coda}</div>
             </div>
           )}
         </div>
