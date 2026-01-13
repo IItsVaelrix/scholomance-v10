@@ -4,6 +4,7 @@ import { usePhonemeEngine } from "../../hooks/usePhonemeEngine.jsx";
 import { useScrolls } from "../../hooks/useScrolls.jsx";
 import { useProgression } from "../../hooks/useProgression.jsx";
 import { XP_SOURCES } from "../../data/progression_constants.js";
+import { ReferenceEngine } from "../../lib/reference.engine.js";
 import GrimoireScroll from "./GrimoireScroll.jsx";
 import AnnotationPanel from "./AnnotationPanel.jsx";
 import ScrollEditor from "./ScrollEditor.jsx";
@@ -17,10 +18,12 @@ export default function ReadPage() {
   const { addXP } = useProgression(); // NEW
 
   const [annotation, setAnnotation] = useState(null);
+  const [analyzedWords, setAnalyzedWords] = useState({}); // Track analyzed words
   const [activeScrollId, setActiveScrollId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [viewMode, setViewMode] = useState("editor"); // "editor" | "viewer"
   const [announcement, setAnnouncement] = useState(""); // NEW: For screen readers
+  const [isTruesight, setIsTruesight] = useState(false); // Truesight toggle
 
   const activeScroll = activeScrollId ? getScrollById(activeScrollId) : null;
 
@@ -37,8 +40,36 @@ export default function ReadPage() {
     }
   }, [annotation]);
 
+  // Handle Truesight activation
+  useEffect(() => {
+    if (isTruesight && activeScroll && engine && isReady) {
+      const words = activeScroll.content.split(/\s+/);
+      const newAnalysis = { ...analyzedWords };
+      let hasUpdates = false;
+
+      words.forEach(word => {
+        const clean = word.replace(/[^A-Za-z']/g, "").toUpperCase();
+        if (clean && !newAnalysis[clean]) {
+          const result = engine.analyzeWord(clean);
+          if (result) {
+            newAnalysis[clean] = {
+              word: clean,
+              ...result,
+              rhymeKey: result.rhymeKey ?? `${result.vowelFamily}-${result.coda ?? ""}`
+            };
+            hasUpdates = true;
+          }
+        }
+      });
+
+      if (hasUpdates) {
+        setAnalyzedWords(newAnalysis);
+      }
+    }
+  }, [isTruesight, activeScroll, engine, isReady]);
+
   const analyze = useCallback(
-    (word) => {
+    async (word) => {
       const clean = String(word || "")
         .replace(/[^A-Za-z']/g, "")
         .toUpperCase();
@@ -46,17 +77,24 @@ export default function ReadPage() {
 
       const result = engine.analyzeWord(clean);
       if (result) {
-        setAnnotation({
+        const rhymeKey =
+          result.rhymeKey ?? `${result.vowelFamily}-${result.coda ?? ""}`;
+        
+        // Fetch external references
+        const references = await ReferenceEngine.fetchAll(clean);
+
+        const analysis = {
           word: clean,
           ...result,
-          rhymeKey:
-            result.rhymeKey ?? `${result.vowelFamily}-${result.coda ?? ""}`,
-        });
-        // Award XP for word analysis - NEW
-        addXP(XP_SOURCES.WORD_ANALYZED, "word-analysis");
+          rhymeKey,
+          ...references // Add definition, synonyms, rhymes
+        };
+
+        setAnnotation(analysis);
+        setAnalyzedWords((prev) => ({ ...prev, [clean]: analysis }));
       }
     },
-    [engine, addXP]
+    [engine]
   );
 
   const handleSaveScroll = useCallback(
@@ -81,6 +119,8 @@ export default function ReadPage() {
     setIsEditing(false);
     setViewMode("viewer");
     setAnnotation(null);
+    setAnalyzedWords({}); // Reset analyzed words
+    setIsTruesight(false); // Reset Truesight
   }, []);
 
   const handleNewScroll = useCallback(() => {
@@ -88,6 +128,8 @@ export default function ReadPage() {
     setIsEditing(false);
     setViewMode("editor");
     setAnnotation(null);
+    setAnalyzedWords({}); // Reset analyzed words
+    setIsTruesight(false); // Reset Truesight
   }, []);
 
   const handleEditScroll = useCallback(() => {
@@ -166,16 +208,28 @@ export default function ReadPage() {
                 <div key={`view-${activeScrollId}`} className="flex flex-col gap-6 h-full animate-fadeIn">
                   <div className="flex items-center justify-between glass p-6 rounded-xl border-soft">
                     <h2 className="text-2xl font-bold text-primary">{activeScroll.title}</h2>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={handleEditScroll}
-                    >
-                      Edit
-                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        className={`btn ${isTruesight ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => setIsTruesight(!isTruesight)}
+                        title="Reveal rhyme families"
+                      >
+                        <span className="btn-icon">👁</span>
+                        {isTruesight ? "Truesight: ON" : "Truesight: OFF"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleEditScroll}
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </div>
                   <GrimoireScroll
                     text={activeScroll.content}
+                    analyzedWords={analyzedWords}
                     onWordClick={analyze}
                     disabled={!isReady}
                     onAnalyzeEthereal={() => {

@@ -2,6 +2,7 @@ import { useMemo, useCallback } from "react";
 
 export default function GrimoireScroll({
   text,
+  analyzedWords = {}, // Map of UPPERCASE word -> analysis object
   onWordClick,
   disabled,
   onAnalyzeEthereal,
@@ -27,23 +28,32 @@ export default function GrimoireScroll({
           </span>
         );
       }
-      const clean = p.replace(/[^A-Za-z']/g, "");
+      
+      const clean = p.replace(/[^A-Za-z']/g, "").toUpperCase();
+      const analysis = analyzedWords[clean];
+      const wordClasses = ["grimoire-word"];
+      
+      if (analysis?.vowelFamily) {
+        wordClasses.push(`rhyme-${analysis.vowelFamily}`);
+      }
+
       return (
         <button
           key={i}
-          className="grimoire-word"
+          className={wordClasses.join(" ")}
           disabled={disabled || !clean}
           onClick={() => onWordClick?.(clean)}
           onKeyDown={(e) => handleKeyDown(e, clean)}
           aria-label={`Analyze word: ${clean}`}
           aria-disabled={disabled || !clean}
           title={disabled ? "Awakening the engine..." : "Analyze this word"}
+          data-rhyme-key={analysis?.rhymeKey}
         >
           {p}
         </button>
       );
     });
-  }, [text, disabled, onWordClick, handleKeyDown]);
+  }, [text, disabled, onWordClick, handleKeyDown, analyzedWords]);
 
   return (
     <div className="grimoire-cover" role="document">

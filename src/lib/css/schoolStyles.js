@@ -15,6 +15,7 @@ export function generateSchoolCSSVariables() {
     
     lines.push(`  --school-${colorLower}: ${color};`);
     lines.push(`  --school-${colorLower}-hsl: ${school.colorHsl.h}, ${school.colorHsl.s}%, ${school.colorHsl.l}%;`);
+    lines.push(`  --school-${colorLower}-glow: hsla(${school.colorHsl.h}, ${school.colorHsl.s}%, ${school.colorHsl.l}%, 0.4);`);
   });
   
   // Generate angle variables

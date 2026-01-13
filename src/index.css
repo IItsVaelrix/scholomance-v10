@@ -124,16 +124,16 @@ body {
   --border-glow: rgba(255, 255, 255, 0.2);
   
   /* School Colors - Unified & Balanced */
-  --school-void: #9ca3af;
-  --school-void-glow: rgba(156, 163, 175, 0.4);
-  --school-psychic: #22d3ee;
-  --school-psychic-glow: rgba(34, 211, 238, 0.4);
-  --school-alchemy: #e879f9;
-  --school-alchemy-glow: rgba(232, 121, 249, 0.4);
-  --school-will: #fb923c;
-  --school-will-glow: rgba(251, 146, 60, 0.4);
-  --school-sonic: #818cf8;
-  --school-sonic-glow: rgba(129, 140, 248, 0.4);
+  --school-void: #a1a1aa;
+  --school-void-glow: hsla(240, 5%, 63%, 0.4);
+  --school-psychic: #00e5ff;
+  --school-psychic-glow: hsla(185, 100%, 50%, 0.4);
+  --school-alchemy: #d500f9;
+  --school-alchemy-glow: hsla(286, 100%, 52%, 0.4);
+  --school-will: #ff8a00;
+  --school-will-glow: hsla(33, 100%, 50%, 0.4);
+  --school-sonic: #651fff;
+  --school-sonic-glow: hsla(251, 100%, 50%, 0.4);
   
   /* Vowel Families */
   --vowel-A: #f87171;
@@ -891,3 +891,24 @@ h6 { font-size: var(--text-base); }
   position: absolute;
   width: 100%;
 }
+
+/* === RHYME WORD STYLING === */
+.grimoire-word {
+  transition: color var(--transition-base), text-shadow var(--transition-base);
+}
+
+.grimoire-word.rhyme-A  { color: var(--vowel-A); text-shadow: 0 0 8px var(--vowel-A); }
+.grimoire-word.rhyme-AE { color: var(--vowel-AE); text-shadow: 0 0 8px var(--vowel-AE); }
+.grimoire-word.rhyme-AO { color: var(--vowel-AO); text-shadow: 0 0 8px var(--vowel-AO); }
+.grimoire-word.rhyme-AW { color: var(--vowel-AW); text-shadow: 0 0 8px var(--vowel-AW); }
+.grimoire-word.rhyme-AY { color: var(--vowel-AY); text-shadow: 0 0 8px var(--vowel-AY); }
+.grimoire-word.rhyme-EH { color: var(--vowel-EH); text-shadow: 0 0 8px var(--vowel-EH); }
+.grimoire-word.rhyme-ER { color: var(--vowel-ER); text-shadow: 0 0 8px var(--vowel-ER); }
+.grimoire-word.rhyme-EY { color: var(--vowel-EY); text-shadow: 0 0 8px var(--vowel-EY); }
+.grimoire-word.rhyme-IH { color: var(--vowel-IH); text-shadow: 0 0 8px var(--vowel-IH); }
+.grimoire-word.rhyme-IY { color: var(--vowel-IY); text-shadow: 0 0 8px var(--vowel-IY); }
+.grimoire-word.rhyme-OH { color: var(--vowel-OH); text-shadow: 0 0 8px var(--vowel-OH); }
+.grimoire-word.rhyme-OW { color: var(--vowel-OW); text-shadow: 0 0 8px var(--vowel-OW); }
+.grimoire-word.rhyme-OY { color: var(--vowel-OY); text-shadow: 0 0 8px var(--vowel-OY); }
+.grimoire-word.rhyme-UH { color: var(--vowel-UH); text-shadow: 0 0 8px var(--vowel-UH); }
+.grimoire-word.rhyme-UW { color: var(--vowel-UW); text-shadow: 0 0 8px var(--vowel-UW); }

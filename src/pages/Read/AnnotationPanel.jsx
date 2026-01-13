@@ -55,6 +55,9 @@ export default function AnnotationPanel({ annotation, onClose }) {
       </div>
 
       <div className="annotation-content">
+        {/* Phonetic Section */}
+        <div className="annotation-section-title">Phonetic Structure</div>
+        
         <div className="stat grimoire-stat">
           <div className="statLabel">
             <span className="stat-sigil">&#x2726;</span>
@@ -90,14 +93,50 @@ export default function AnnotationPanel({ annotation, onClose }) {
           <div className="statValue rhyme-key">{annotation.rhymeKey}</div>
         </div>
 
-        {annotation.coda && (
+        {/* Semantic Section */}
+        <div className="annotation-section-title mt-6">Lexical Meaning</div>
+        
+        {annotation.definition ? (
           <div className="stat grimoire-stat">
-            <div className="statLabel">
-              <span className="stat-sigil">&#x2729;</span>
-              Coda
+            <div className="statLabel italic">
+              {annotation.definition.partOfSpeech}
             </div>
-            <div className="statValue">{annotation.coda}</div>
+            <div className="statValue definition-text">
+              {annotation.definition.text}
+              <div className="text-xs opacity-50 mt-1">Source: {annotation.definition.source}</div>
+            </div>
           </div>
+        ) : (
+          <div className="text-xs opacity-50 italic px-4">No definition found.</div>
+        )}
+
+        {annotation.synonyms?.length > 0 && (
+          <div className="stat grimoire-stat">
+            <div className="statLabel">Synonyms</div>
+            <div className="statValue flex flex-wrap gap-2">
+              {annotation.synonyms.slice(0, 8).map((syn, i) => (
+                <span key={syn} className="text-sm opacity-80 underline decoration-dotted">
+                  {syn}{i < Math.min(annotation.synonyms.length, 8) - 1 ? "," : ""}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Rhyme Section */}
+        <div className="annotation-section-title mt-6">Resonance (Rhymes)</div>
+        {annotation.rhymes?.length > 0 ? (
+          <div className="stat grimoire-stat">
+            <div className="statValue flex flex-wrap gap-2">
+              {annotation.rhymes.slice(0, 12).map((r) => (
+                <span key={r} className="phoneme-chip opacity-90 border-soft">
+                  {r}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="text-xs opacity-50 italic px-4">No rhymes discovered.</div>
         )}
       </div>
 
