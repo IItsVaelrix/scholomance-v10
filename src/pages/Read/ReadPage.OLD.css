@@ -1,0 +1,704 @@
+/* === THE ARCANE GRIMOIRE - READ PAGE STYLES === */
+
+/* === STRUCTURAL LAYOUT: THE OPEN TOME === */
+
+.readPage {
+  background: linear-gradient(180deg, #0a0a0f 0%, #0d0a12 60%, #0a0a0f 100%);
+  padding: 48px 24px;
+  min-height: 100vh;
+  --read-panel: #161520;
+  --read-dark: #110c12;
+  --read-ink: #f4ebde;
+  --read-gold: #c9a227;
+  --read-accent: #8b2500;
+  --read-radius: 6px;
+}
+
+.read-layout {
+  display: flex;
+  gap: 0;
+  max-width: 1440px;
+  margin: 0 auto;
+  position: relative;
+  align-items: flex-start;
+}
+
+/* Bookmark Tab / Table of Contents Sidebar */
+.read-sidebar {
+  width: 320px;
+  min-width: 320px;
+  background: var(--read-dark);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0 var(--read-radius) var(--read-radius) 0;
+  position: relative;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  padding: 20px 12px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
+}
+
+/* Bookmark ribbon effect */
+.read-sidebar::before {
+  content: "";
+  position: absolute;
+  top: 20px;
+  left: -14px;
+  width: 18px;
+  height: 80px;
+  background: var(--read-accent);
+  border-radius: var(--read-radius) 0 0 var(--read-radius);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  z-index: var(--z-content);
+}
+
+/* Sidebar header */
+.sidebar-header {
+  font-family: 'UnifrakturMaguntia', cursive;
+  font-size: 20px;
+  color: #f5ede0;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #c9a227;
+  text-shadow: none;
+}
+
+/* Scroll list */
+.scroll-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.scroll-list-item {
+  padding: 14px 12px;
+  margin: 0;
+  border-radius: var(--read-radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.06);
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 14px;
+  color: #d8d0c7;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.scroll-list-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(201, 162, 39, 0.7);
+}
+
+.scroll-list-item.active {
+  background: rgba(201, 162, 39, 0.12);
+  border-color: var(--read-gold);
+  color: #fdf9f0;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.scroll-list-item-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.scroll-list-item-date {
+  font-size: 11px;
+  opacity: 0.8;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(245, 237, 224, 0.7);
+}
+
+/* New scroll button */
+.new-scroll-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  border-radius: var(--read-radius);
+  background: var(--read-accent);
+  border: 1px solid #5c1a00;
+  color: #fdf9f0;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.new-scroll-btn:hover {
+  background: #a32d00;
+}
+
+/* === THE GRIMOIRE EDITOR CONTAINER === */
+
+.read-stage {
+  flex: 1;
+  position: relative;
+  padding-left: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.analysis-toggle-btn {
+  /* Leave room for the sticky nav when scrolled into view by automation */
+  scroll-margin-top: 96px;
+}
+
+.scroll-editor {
+  width: 100%;
+  max-width: 900px;
+  background: var(--read-panel);
+  border-radius: var(--read-radius);
+  box-shadow:
+    0 22px 40px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(17, 12, 18, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  position: relative;
+  overflow: visible;
+  padding: 40px;
+}
+
+/* Torn paper edges - top */
+.scroll-editor::before {
+  content: none;
+}
+
+/* Torn paper edges - bottom */
+.scroll-editor::after {
+  content: none;
+}
+
+/* === EDITOR HEADER === */
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+  gap: 20px;
+}
+
+/* Title input styling */
+.editor-title-input {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--read-ink);
+  text-shadow: none;
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 0;
+  flex: 1;
+  outline: none;
+}
+
+.editor-title-input::placeholder {
+  color: rgba(244, 235, 222, 0.6);
+  font-style: italic;
+}
+
+.editor-title-input:focus {
+  border-bottom-color: var(--read-gold);
+}
+
+/* Stats panel */
+.editor-stats {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(244, 235, 222, 0.85);
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--read-radius);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  gap: 16px;
+  white-space: nowrap;
+}
+
+.stat-badge {
+  display: inline-block;
+}
+
+.stat-badge--alert {
+  color: #8b2500;
+  font-weight: 600;
+}
+
+/* === EDITOR BODY === */
+
+.editor-body {
+  background: #110f18;
+  min-height: 500px;
+  padding: 0;
+  border-radius: 4px;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* Ink bleed text effect */
+.editor-content {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 18px;
+  line-height: 1.8;
+  color: var(--read-ink);
+  text-shadow: none;
+  caret-color: var(--read-ink);
+  min-height: 400px;
+  outline: none;
+  background: transparent;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+/* Hand-drawn line separators */
+.editor-line {
+  position: relative;
+  padding: 4px 0;
+}
+
+.editor-line::after { content: none; }
+
+/* Word styling */
+.editor-word {
+  position: relative;
+  cursor: help;
+  transition: all 0.2s ease;
+}
+
+.editor-word:hover {
+  text-shadow: 
+    0 0 12px rgba(201, 162, 39, 0.5),
+    0 0.2px 0 rgba(255, 255, 255, 0.3),
+    0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+/* Placeholder text */
+.editor-placeholder {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  color: rgba(244, 235, 222, 0.6);
+  font-size: 18px;
+  pointer-events: none;
+}
+
+.editor-content.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+}
+
+/* === EDITOR FOOTER === */
+
+.editor-footer {
+  margin-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.editor-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(244, 235, 222, 0.75);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-hint kbd {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 10px;
+}
+
+.editor-warning {
+  color: #8b2500;
+  font-weight: 600;
+  margin-left: 12px;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* === RUNES AND WAX: BUTTONS === */
+
+/* Wax Seal Buttons (Primary) */
+.editor-btn--primary {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  padding: 12px 24px;
+  border-radius: var(--read-radius);
+  background: var(--read-accent);
+  border: 1px solid #5c1a00;
+  color: #fdf9f0;
+  cursor: pointer;
+  position: relative;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  transition: all 0.2s ease;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-btn--primary::before {
+  content: none;
+}
+
+.editor-btn--primary:hover {
+  background: #a32d00;
+}
+
+.editor-btn--primary:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.editor-btn--primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.btn-sigil {
+  font-size: 18px;
+  display: inline-block;
+}
+
+.btn-sigil.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Rune Buttons (Secondary) */
+.editor-btn--secondary {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px;
+  padding: 10px 16px;
+  border-radius: var(--read-radius);
+  min-width: 44px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fdf9f0;
+  cursor: pointer;
+  box-shadow: none;
+  transition: all 0.2s ease;
+}
+
+.editor-btn--secondary:hover {
+  border-color: var(--read-gold);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* === VALIDATION ERRORS === */
+
+.editor-validation-error {
+  padding: 12px 18px;
+  margin: 12px 0 0;
+  background: rgba(139, 37, 0, 0.1);
+  border: 1px solid rgba(139, 37, 0, 0.3);
+  border-radius: 4px;
+  color: #8b2500;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Crimson Text', Georgia, serif;
+}
+
+.error-sigil {
+  font-size: 18px;
+}
+
+/* === ANNOTATION PANEL === */
+
+.annotation-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: min(400px, 90vw);
+  background: #f5efe2;
+  border-left: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: -10px 0 24px rgba(0, 0, 0, 0.25);
+  padding: 40px 24px;
+  overflow-y: auto;
+  z-index: var(--z-modal);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .annotation-panel {
+    backdrop-filter: blur(12px) saturate(120%);
+  }
+}
+
+.annotation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #c9a227;
+}
+
+.annotation-title {
+  font-family: 'UnifrakturMaguntia', cursive;
+  font-size: 24px;
+  color: #2c1810;
+  margin: 0;
+}
+
+.annotation-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #c9a227;
+  background: rgba(255, 255, 255, 0.5);
+  color: #2c1810;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: all 0.2s ease;
+}
+
+.annotation-close:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: none;
+}
+
+.annotation-word {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 32px;
+  color: #2c1810;
+  margin-bottom: 20px;
+  text-shadow: none;
+}
+
+.annotation-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+/* === CHIP BADGES === */
+
+.chip {
+  background: #f7f1e6;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--read-radius);
+  padding: 6px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: none;
+  transform: none;
+  transition: all 0.3s ease;
+  color: #2c1810;
+}
+
+.chip:hover {
+  transform: none;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.annotation-evidence {
+  margin-top: 20px;
+}
+
+.evidence-item {
+  padding: 12px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  border-left: 3px solid #c9a227;
+  border-radius: 4px;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 14px;
+  color: #2c1810;
+}
+
+.evidence-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #6b5344;
+  margin-bottom: 4px;
+}
+
+.evidence-value {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* === RESPONSIVE DESIGN === */
+
+@media (max-width: 1200px) {
+  .read-layout {
+    flex-direction: column;
+  }
+  
+  .read-sidebar {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: 200px;
+    min-height: auto;
+    border-right: none;
+    border-bottom: 3px solid #c9a227;
+    border-radius: 8px 8px 0 0;
+    padding: 16px;
+  }
+  
+  .read-sidebar::before {
+    display: none;
+  }
+  
+  .read-stage {
+    padding-left: 0;
+    padding-top: 20px;
+  }
+  
+  .scroll-editor {
+    padding: 24px;
+  }
+  
+  .scroll-editor::before,
+  .scroll-editor::after {
+    background-size: 100px 12px;
+  }
+  
+  .editor-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .editor-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .editor-actions {
+    justify-content: stretch;
+  }
+  
+  .editor-btn--primary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 968px) {
+  .readPage {
+    padding: 20px 10px;
+  }
+  
+  .scroll-editor {
+    padding: 16px;
+  }
+  
+  .editor-content {
+    font-size: 16px;
+  }
+  
+  .editor-title-input {
+    font-size: 22px;
+  }
+  
+  .annotation-panel {
+    width: 100vw;
+  }
+}
+
+@media (max-width: 640px) {
+  .readPage {
+    padding: 16px 8px;
+  }
+
+  .scroll-editor {
+    padding: 14px;
+  }
+
+  .analysis-toggle-btn {
+    width: 100%;
+  }
+
+  .editor-title-input {
+    font-size: 20px;
+  }
+}
+
+/* === REDUCED MOTION === */
+
+@media (prefers-reduced-motion: reduce) {
+  .chip,
+  .editor-btn--primary,
+  .editor-btn--secondary,
+  .scroll-list-item,
+  .annotation-close {
+    animation: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  
+  .chip:hover {
+    transform: none !important;
+  }
+}
+
+/* === PRINT STYLES === */
+
+@media print {
+  .read-sidebar,
+  .editor-footer,
+  .annotation-panel {
+    display: none;
+  }
+  
+  .scroll-editor {
+    box-shadow: none;
+    border: 1px solid #2c1810;
+  }
+  
+  .scroll-editor::before,
+  .scroll-editor::after {
+    display: none;
+  }
+}

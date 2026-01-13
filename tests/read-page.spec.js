@@ -6,6 +6,11 @@ async function typeInEditor(page, text) {
   await page.keyboard.type(text);
 }
 
+async function enableAnalysisMode(page) {
+  const toggle = page.getByRole('button', { name: /analysis mode/i });
+  await toggle.click();
+}
+
 test.describe('Read Page - Scroll Management', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the page and clear storage
@@ -15,6 +20,7 @@ test.describe('Read Page - Scroll Management', () => {
 
     // Wait for the editor to be ready
     await page.waitForSelector('#scroll-content:not([aria-disabled="true"])');
+    await enableAnalysisMode(page);
   });
 
   test('should show the scroll editor', async ({ page }) => {
@@ -101,6 +107,7 @@ test.describe('Read Page - Phoneme Analysis', () => {
     await page.evaluate(() => localStorage.clear());
     await page.reload();
     await page.waitForSelector('#scroll-content:not([aria-disabled="true"])');
+    await enableAnalysisMode(page);
   });
 
   test('should enable the editor once the engine is ready', async ({ page }) => {

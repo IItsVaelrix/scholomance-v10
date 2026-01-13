@@ -1,7 +1,21 @@
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
+import { LexicalComposer } from "@lexical/react/LexicalComposer";
+import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
+import { ContentEditable } from "@lexical/react/LexicalContentEditable";
+import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
+import { AutoFocusPlugin } from "@lexical/react/LexicalAutoFocusPlugin";
+import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
+import { $createParagraphNode, $createTextNode, $getRoot } from "lexical";
 import { motion } from "framer-motion";
 import { SCROLL_LIMITS } from "../../data/scrollLimits";
 import { getEvidenceValue } from "../../engines/colorEngine/index.ts";
+
+const theme = {
+  paragraph: "editor-line",
+  placeholder: "editor-placeholder",
+};
 
 const escapeHtml = (value) =>
   String(value)
@@ -10,8 +24,6 @@ const escapeHtml = (value) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-
-const normalizeEditorText = (value) => String(value || "").replace(/\r\n/g, "\n");
 
 const buildEditorMarkup = (text, decorations = []) => {
   if (!text) return "";
@@ -46,12 +58,35 @@ const buildEditorMarkup = (text, decorations = []) => {
         const baseClasses = result?.classes?.length ? result.classes : ["editor-word"];
         const textClass = isRhyming ? result?.channels?.text?.className : "";
         const feelClass = result?.channels?.accent?.className || "";
+        const schoolClass =
+          result?.chips?.find((chip) => chip.type === "school")?.className || "";
+        const feelLabel = result?.chips?.find((chip) => chip.type === "feel")?.label || "";
+        const schoolLabel =
+          result?.chips?.find((chip) => chip.type === "school")?.label || "";
+        const confidence = result?.confidence ?? "";
+        const enriched = result?.enriched ? "true" : "false";
         const classes = [
-          ...new Set([...baseClasses, textClass, feelClass, feelClass ? "has-feel" : ""]),
+          ...new Set([
+            ...baseClasses,
+            textClass,
+            feelClass,
+            schoolClass,
+            feelClass ? "has-feel" : "",
+            isRhyming ? "is-rhyming" : "",
+          ]),
         ]
           .filter(Boolean)
           .join(" ");
-        html += `<span class="${classes}">${escapeHtml(match)}</span>`;
+        const attrs = [
+          rhymeKey ? `data-rhyme="${rhymeKey}"` : "",
+          feelLabel ? `data-feel="${feelLabel.toLowerCase()}"` : "",
+          schoolLabel ? `data-school="${schoolLabel.toLowerCase()}"` : "",
+          confidence !== "" ? `data-confidence="${confidence.toFixed?.(2) || confidence}"` : "",
+          `data-enriched="${enriched}"`,
+        ]
+          .filter(Boolean)
+          .join(" ");
+        html += `<span class="${classes}" ${attrs}>${escapeHtml(match)}</span>`;
         lastIndex = offset + match.length;
         wordIndex += 1;
         return match;
@@ -65,24 +100,86 @@ const buildEditorMarkup = (text, decorations = []) => {
     .join("");
 };
 
-const getRenderDelay = (length) => {
-  if (length > 8000) return 300;
-  if (length > 3000) return 220;
-  if (length > 1200) return 150;
-  return 80;
+const StatsPanel = memo(function StatsPanel({ wordCount, charCount, limit, isOverLimit }) {
+  return (
+    <div className="editor-stats">
+      <span className="stat-badge">{wordCount} words</span>
+      <span className={`stat-badge ${isOverLimit ? "stat-badge--alert" : ""}`}>
+        {charCount} / {limit.toLocaleString()} chars
+      </span>
+    </div>
+  );
+});
+
+function PlainTextInitPlugin({ content }) {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    editor.update(() => {
+      const root = $getRoot();
+      root.clear();
+      content.split("\n").forEach((line) => {
+        const paragraph = $createParagraphNode();
+        paragraph.append($createTextNode(line));
+        root.append(paragraph);
+      });
+    });
+  }, [content, editor]);
+  return null;
+}
+
+function WordClickPlugin({ onWordClick }) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    const rootEl = editor.getRootElement();
+    if (!rootEl) return;
+
+    const handleClick = (event) => {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      const range = selection.getRangeAt(0);
+      const node = selection.anchorNode;
+      if (node?.nodeType !== Node.TEXT_NODE) return;
+      const text = node.textContent || "";
+      let start = range.startOffset;
+      let end = range.startOffset;
+      while (start > 0 && /\w/.test(text[start - 1])) start -= 1;
+      while (end < text.length && /\w/.test(text[end])) end += 1;
+      const word = text.slice(start, end);
+      if (word) onWordClick?.(word);
+    };
+
+    rootEl.addEventListener("click", handleClick);
+    return () => rootEl.removeEventListener("click", handleClick);
+  }, [editor, onWordClick]);
+
+  return null;
+}
+
+const COMMIT_DELAY_MS = 500;
+const SLOW_DECORATE_DELAY_MS = 550;
+const TYPING_IDLE_MS = 550;
+const LINE_CACHE_LIMIT = 500;
+
+const countStats = (text) => {
+  const trimmed = text.trim();
+  return {
+    words: trimmed ? trimmed.split(/\s+/).length : 0,
+    chars: text.length,
+  };
 };
 
-const getCaretOffset = (root) => {
+const getCaretOffset = (rootEl) => {
   const selection = window.getSelection?.();
-  if (!selection || selection.rangeCount === 0 || !root) return null;
+  if (!selection || selection.rangeCount === 0 || !rootEl) return null;
   const range = selection.getRangeAt(0);
   const startNode = range.startContainer;
   const lineEl =
     (startNode.nodeType === Node.TEXT_NODE
       ? startNode.parentElement?.closest(".editor-line")
       : startNode.closest?.(".editor-line")) || null;
-  if (!lineEl || !root.contains(lineEl)) return null;
-  const lines = Array.from(root.children);
+  if (!lineEl || !rootEl.contains(lineEl)) return null;
+  const lines = Array.from(rootEl.querySelectorAll(".editor-line"));
   const lineIndex = lines.indexOf(lineEl);
   if (lineIndex < 0) return null;
   const lineRange = range.cloneRange();
@@ -96,48 +193,6 @@ const getCaretOffset = (root) => {
   return offset;
 };
 
-const setCaretOffset = (root, offset) => {
-  if (offset === null || offset === undefined || !root) return;
-  const selection = window.getSelection?.();
-  if (!selection) return;
-  const lines = Array.from(root.children);
-  let remaining = offset;
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
-    const lineLength = line.innerText.length;
-    if (remaining <= lineLength) {
-      const range = document.createRange();
-      const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
-      let node = walker.nextNode();
-      let current = 0;
-      while (node) {
-        const textLength = node.textContent?.length || 0;
-        const next = current + textLength;
-        if (remaining <= next) {
-          range.setStart(node, Math.max(0, remaining - current));
-          range.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(range);
-          return;
-        }
-        current = next;
-        node = walker.nextNode();
-      }
-      range.selectNodeContents(line);
-      range.collapse(false);
-      selection.removeAllRanges();
-      selection.addRange(range);
-      return;
-    }
-    remaining -= lineLength + 1;
-  }
-  const endRange = document.createRange();
-  endRange.selectNodeContents(root);
-  endRange.collapse(false);
-  selection.removeAllRanges();
-  selection.addRange(endRange);
-};
-
 export default function ScrollEditor({
   initialTitle = "",
   initialContent = "",
@@ -149,66 +204,258 @@ export default function ScrollEditor({
   colorEngine = null,
   engineRevision = 0,
   onWordClick,
+  analysisEnabled = false,
+  onToggleAnalysis,
 }) {
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
+  const [stats, setStats] = useState(() => countStats(initialContent));
+  const [hasContent, setHasContent] = useState(() => Boolean(initialContent.trim()));
   const [isSaving, setIsSaving] = useState(false);
   const [validationError, setValidationError] = useState(null);
-  const editorRef = useRef(null);
-  const renderTimeoutRef = useRef(null);
-  const caretRef = useRef(null);
-  const isComposingRef = useRef(false);
-  const [renderedContent, setRenderedContent] = useState(() =>
-    buildEditorMarkup(initialContent, [])
-  );
+  const [decoratedMarkup, setDecoratedMarkup] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const hasContentRef = useRef(Boolean(initialContent.trim()));
+  const contentRef = useRef(initialContent);
+  const commitTimerRef = useRef(null);
+  const slowTimerRef = useRef(null);
+  const typingTimerRef = useRef(null);
+  const rootElRef = useRef(null);
+  const lineCacheRef = useRef(new Map());
+  const autoAnnotatedRef = useRef(false);
+  const isVisualTest =
+    typeof document !== "undefined" &&
+    document.documentElement?.dataset?.visualTest === "true";
 
   useEffect(() => {
     setTitle(initialTitle);
     setContent(initialContent);
+    setStats(countStats(initialContent));
+    contentRef.current = initialContent;
+    const nextHasContent = Boolean(initialContent.trim());
+    hasContentRef.current = nextHasContent;
+    setHasContent(nextHasContent);
+    setDecoratedMarkup("");
   }, [initialTitle, initialContent]);
 
   useEffect(() => {
-    if (editorRef.current && !initialContent) {
-      editorRef.current.focus();
-    }
-  }, [initialContent]);
-
-  useEffect(() => {
     return () => {
-      if (renderTimeoutRef.current) {
-        clearTimeout(renderTimeoutRef.current);
-      }
+      if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+      if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     };
   }, []);
-  useEffect(() => {
-    if (renderTimeoutRef.current) {
-      clearTimeout(renderTimeoutRef.current);
-    }
-    const delay = getRenderDelay(content.length);
-    renderTimeoutRef.current = setTimeout(() => {
-      try {
-        const decorations = colorEngine ? colorEngine.decorateText(content).decorations : [];
-        setRenderedContent(buildEditorMarkup(content, decorations));
-      } catch (e) {
-        console.error("Error building editor markup:", e);
-        // Fallback to un-highlighted text to prevent crash
-        setRenderedContent(escapeHtml(content).replace(/\n/g, '<br>'));
-      }
-    }, delay);
-  }, [content, colorEngine, engineRevision, disabled]);
 
-  useLayoutEffect(() => {
-    if (caretRef.current !== null) {
-      setCaretOffset(editorRef.current, caretRef.current);
-      caretRef.current = null;
+  useEffect(() => {
+    decorateCurrent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engineRevision, colorEngine]);
+
+  useEffect(() => {
+    if (autoAnnotatedRef.current) return;
+    if (typeof document === "undefined") return;
+    if (document.documentElement.dataset.visualTest !== "true") return;
+    if (!colorEngine?.getTokenResult) return;
+    if (!analysisEnabled) return;
+    const firstWord = contentRef.current.trim().split(/\s+/)[0];
+    if (firstWord && onWordClick) {
+      autoAnnotatedRef.current = true;
+      onWordClick(firstWord);
     }
-  }, [renderedContent]);
+  }, [decoratedMarkup, onWordClick, colorEngine, engineRevision, analysisEnabled]);
+
+  useEffect(() => {
+    if (!analysisEnabled) {
+      setDecoratedMarkup("");
+    }
+  }, [analysisEnabled]);
+
+  const isOverLimit = stats.chars > SCROLL_LIMITS.content;
+  const remaining = SCROLL_LIMITS.content - stats.chars;
+
+  function decorateCurrent() {
+    if (!analysisEnabled || !colorEngine) {
+      setDecoratedMarkup("");
+      return;
+    }
+    const sourceText = String(contentRef.current || "");
+    if (!sourceText.trim()) {
+      setDecoratedMarkup("");
+      return;
+    }
+    try {
+      const lines = sourceText.split("\n");
+      const cache = lineCacheRef.current;
+      const parts = lines.map((line, index) => {
+        const cacheKey = `${engineRevision}|${line}`;
+        if (cache.has(cacheKey)) {
+          const cached = cache.get(cacheKey);
+          cache.delete(cacheKey);
+          cache.set(cacheKey, cached);
+          return cached.replace('data-line="0"', `data-line="${index}"`);
+        }
+        const { decorations } = colorEngine.decorateText(line);
+        const markup = buildEditorMarkup(line, decorations);
+        const normalized = markup.replace('data-line="0"', `data-line="${index}"`);
+        cache.set(cacheKey, normalized);
+        if (cache.size > LINE_CACHE_LIMIT) {
+          const oldestKey = cache.keys().next().value;
+          cache.delete(oldestKey);
+        }
+        return normalized;
+      });
+      setDecoratedMarkup(parts.join(""));
+    } catch {
+      // swallow decoration errors to avoid blocking input
+    }
+  }
+
+  function scheduleSlowDecorate() {
+    if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+    if (!analysisEnabled) {
+      slowTimerRef.current = null;
+      setDecoratedMarkup("");
+      return;
+    }
+    if (!contentRef.current.trim()) {
+      slowTimerRef.current = null;
+      setDecoratedMarkup("");
+      return;
+    }
+    if (isVisualTest) {
+      slowTimerRef.current = null;
+      decorateCurrent();
+      return;
+    }
+    slowTimerRef.current = setTimeout(() => {
+      slowTimerRef.current = null;
+      decorateCurrent();
+    }, SLOW_DECORATE_DELAY_MS);
+  }
+
+  const initialConfig = useMemo(
+    () => ({
+      namespace: "ScholomanceEditor",
+      theme,
+      editable: !disabled && !isSaving,
+      onError: (err) => console.error(err),
+    }),
+    [disabled, isSaving]
+  );
+
+  const scheduleCommit = () => {
+    if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = setTimeout(() => {
+      commitTimerRef.current = null;
+      const next = contentRef.current;
+      setContent(next);
+      onContentChange?.(next);
+    }, COMMIT_DELAY_MS);
+  };
+
+  const handleEditorKeyDown = (event) => {
+    const key = event.key.toLowerCase();
+    if ((event.ctrlKey || event.metaKey) && key === "s") {
+      event.preventDefault();
+      if (!disabled && !isSaving) {
+        handleSave();
+      }
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && key === "enter") {
+      event.preventDefault();
+      if (!disabled && !isSaving) {
+        handleSave();
+      }
+      return;
+    }
+    if (event.key === "Escape") {
+      if (analysisEnabled && onToggleAnalysis) {
+        event.preventDefault();
+        onToggleAnalysis(false);
+        return;
+      }
+      if (onCancel) {
+        event.preventDefault();
+        onCancel();
+      }
+    }
+  };
+
+  const scheduleTypingIdle = () => {
+    setIsTyping(true);
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      setIsTyping(false);
+    }, TYPING_IDLE_MS);
+  };
+
+  const handleEditorChange = (editorState, editor) => {
+    editorState.read(() => {
+      const root = $getRoot();
+      const text = root.getTextContent();
+      contentRef.current = text;
+      const nextHasContent = Boolean(text.trim());
+      if (nextHasContent !== hasContentRef.current) {
+        hasContentRef.current = nextHasContent;
+        setHasContent(nextHasContent);
+      }
+      if (analysisEnabled && !text.trim()) {
+        if (slowTimerRef.current) {
+          clearTimeout(slowTimerRef.current);
+          slowTimerRef.current = null;
+        }
+        setDecoratedMarkup("");
+      }
+
+      const nextStats = countStats(text);
+      if (nextStats.words !== stats.words || nextStats.chars !== stats.chars) {
+        setStats(nextStats);
+      }
+
+      const rootEl = editor.getRootElement();
+      if (rootEl && !rootElRef.current) {
+        rootElRef.current = rootEl;
+      }
+
+      // Fast pass: decorate only the active line
+      if (analysisEnabled && colorEngine && rootElRef.current) {
+        const offset = getCaretOffset(rootElRef.current);
+        if (offset !== null) {
+          const lines = text.split("\n");
+          let remainingOffset = offset;
+          let activeLineText = lines[0] || "";
+          for (let i = 0; i < lines.length; i += 1) {
+            const len = lines[i].length + 1;
+            if (remainingOffset <= len) {
+              activeLineText = lines[i];
+              break;
+            }
+            remainingOffset -= len;
+          }
+          try {
+            colorEngine.decorateText(activeLineText);
+          } catch {
+            /* ignore fast-pass errors */
+          }
+        }
+      }
+
+      scheduleCommit();
+      if (text.trim()) {
+        scheduleSlowDecorate();
+      } else if (analysisEnabled) {
+        setDecoratedMarkup("");
+      }
+      scheduleTypingIdle();
+    });
+  };
 
   const handleSave = async () => {
     setValidationError(null);
+    const latest = contentRef.current;
 
-    // Validation
-    if (!content.trim()) {
+    if (!latest.trim()) {
       setValidationError({ field: "content", message: "Content cannot be empty" });
       return;
     }
@@ -219,7 +466,7 @@ export default function ScrollEditor({
       });
       return;
     }
-    if (content.length > SCROLL_LIMITS.content) {
+    if (latest.length > SCROLL_LIMITS.content) {
       setValidationError({
         field: "content",
         message: `Content must be ${SCROLL_LIMITS.content.toLocaleString()} characters or less`,
@@ -229,8 +476,10 @@ export default function ScrollEditor({
 
     setIsSaving(true);
     try {
-      await onSave?.(title.trim(), content.trim());
+      await onSave?.(title.trim(), latest.trim());
       setValidationError(null);
+      setContent(latest);
+      onContentChange?.(latest);
     } catch (err) {
       setValidationError({
         field: "form",
@@ -241,67 +490,17 @@ export default function ScrollEditor({
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      handleSave();
-    }
-    if (e.key === "Escape" && onCancel) {
-      onCancel();
-    }
-  };
-
-  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
-  const charCount = content.length;
-  const isOverLimit = charCount > SCROLL_LIMITS.content;
-  const remaining = SCROLL_LIMITS.content - charCount;
-
-  const handleContentChange = (value) => {
-    const nextValue =
-      value.length > SCROLL_LIMITS.content ? value.slice(0, SCROLL_LIMITS.content) : value;
-    setContent(nextValue);
-    onContentChange?.(nextValue);
-  };
-
-  const handleInput = (event) => {
-    if (disabled || isSaving || isComposingRef.current) return;
-    caretRef.current = getCaretOffset(editorRef.current);
-    const rawText = normalizeEditorText(event.currentTarget.innerText);
-    handleContentChange(rawText);
-  };
-
-  const handlePaste = (event) => {
-    if (disabled || isSaving) return;
-    event.preventDefault();
-    const text = normalizeEditorText(event.clipboardData.getData("text/plain"));
-    document.execCommand("insertText", false, text);
-  };
-
-  const handleCompositionStart = () => {
-    isComposingRef.current = true;
-  };
-
-  const handleCompositionEnd = (event) => {
-    isComposingRef.current = false;
-    handleInput(event);
-  };
-
-  const handleWordClick = (e) => {
-    if (disabled || isSaving) return;
-    const target = e.target;
-    if (target.classList.contains("editor-word")) {
-      const word = target.innerText;
-      onWordClick?.(word);
-    }
-  };
-
-  const titleError = validationError?.field === "title";
-  const contentError = validationError?.field === "content";
   const formError = validationError?.field === "form";
+  const contentError = validationError?.field === "content";
+  const titleError = validationError?.field === "title";
+
+  const hasOverlay = Boolean(analysisEnabled && hasContent && decoratedMarkup);
 
   return (
     <motion.div
-      className={`scroll-editor surface ${content.trim() ? "has-text" : "is-empty"}`}
+      className={`scroll-editor surface ${contentRef.current.trim() ? "has-text" : "is-empty"} ${
+        hasOverlay ? "has-overlay" : ""
+      }`}
       data-surface="editor"
       data-role="editor"
       initial={{ opacity: 0, y: 10 }}
@@ -325,54 +524,67 @@ export default function ScrollEditor({
           aria-invalid={titleError}
           aria-describedby={titleError ? "editor-error-message" : undefined}
         />
-        <div className="editor-stats">
-          <span className="stat-badge">{wordCount} words</span>
-          <span className={`stat-badge ${isOverLimit ? "stat-badge--alert" : ""}`}>
-            {charCount} / {SCROLL_LIMITS.content.toLocaleString()} chars
-          </span>
-        </div>
+        <StatsPanel
+          wordCount={stats.words}
+          charCount={stats.chars}
+          limit={SCROLL_LIMITS.content}
+          isOverLimit={isOverLimit}
+        />
       </div>
 
-      {(validationError) && (
+      {(validationError && !formError) && (
         <div id="editor-error-message" className="editor-validation-error" role="alert">
           <span className="error-sigil">⚠</span>
           {validationError.message}
         </div>
       )}
 
-      <div className="editor-body">
-        <div className="editor-margin" aria-hidden="true">
-          <span className="margin-glyph">&#x2609;</span>
-          <span className="margin-glyph">&#x263D;</span>
-          <span className="margin-glyph">&#x2641;</span>
-        </div>
-        <label htmlFor="scroll-content" className="sr-only">
-          Scroll Content
-        </label>
-        <div
-          ref={editorRef}
-          id="scroll-content"
-          className="editor-content"
-          data-placeholder="Inscribe thy verses upon this sacred parchment...
-
-Click any word after saving to analyze its phonetic structure."
-          contentEditable={!disabled && !isSaving}
-          suppressContentEditableWarning
-          role="textbox"
-          aria-multiline="true"
-          aria-invalid={contentError}
-          aria-describedby={contentError ? "editor-error-message" : undefined}
-          aria-disabled={disabled || isSaving}
-          tabIndex={disabled || isSaving ? -1 : 0}
-          onInput={handleInput}
-          onClick={handleWordClick}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          onCompositionStart={handleCompositionStart}
-          onCompositionEnd={handleCompositionEnd}
-          spellCheck="false"
-          dangerouslySetInnerHTML={{ __html: renderedContent }}
-        />
+      <div className="editor-body" style={{ position: "relative" }}>
+        <span id="scrollBodyLabel" className="sr-only">Scroll text</span>
+        <p id="editorHelp" className="sr-only">
+          Editor. Type to write. Press Control+S to save. Press Escape to exit analysis mode.
+        </p>
+        {decoratedMarkup ? (
+          <div
+            className="editor-content overlay analysis-overlay"
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              pointerEvents: "none",
+              opacity: isTyping ? 0.3 : 1,
+              zIndex: 0,
+            }}
+            dangerouslySetInnerHTML={{ __html: decoratedMarkup }}
+          />
+        ) : null}
+        <LexicalComposer initialConfig={initialConfig} key={`${engineRevision}-${initialContent}`}>
+          <RichTextPlugin
+            contentEditable={
+              <ContentEditable
+                id="scrollBody"
+                className="editor-content"
+                role="textbox"
+                aria-multiline="true"
+                aria-labelledby="scrollBodyLabel"
+                aria-describedby="editorHelp"
+                tabIndex={0}
+                onKeyDown={handleEditorKeyDown}
+              />
+            }
+            placeholder={
+              <div className="editor-placeholder">
+                Inscribe thy verses upon this sacred parchment...
+              </div>
+            }
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          <HistoryPlugin />
+          <AutoFocusPlugin />
+          <PlainTextInitPlugin content={initialContent} />
+          <OnChangePlugin onChange={handleEditorChange} />
+          <WordClickPlugin onWordClick={onWordClick} />
+        </LexicalComposer>
       </div>
 
       <div className="editor-footer">
@@ -404,7 +616,7 @@ Click any word after saving to analyze its phonetic structure."
             type="button"
             className="editor-btn editor-btn--primary"
             onClick={handleSave}
-            disabled={disabled || isSaving || !content.trim() || isOverLimit}
+            disabled={disabled || isSaving || !contentRef.current.trim() || isOverLimit}
           >
             {isSaving ? (
               <>
@@ -419,6 +631,12 @@ Click any word after saving to analyze its phonetic structure."
             )}
           </button>
         </div>
+        {formError && (
+          <div className="editor-validation-error" role="alert">
+            <span className="error-sigil">⚠</span>
+            {validationError.message}
+          </div>
+        )}
       </div>
     </motion.div>
   );

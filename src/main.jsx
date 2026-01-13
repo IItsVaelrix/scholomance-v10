@@ -10,19 +10,27 @@ const WatchPage = lazy(() => import("./pages/Watch/WatchPage.jsx"));
 const ListenPage = lazy(() => import("./pages/Listen/ListenPage.jsx"));
 const ReadPage = lazy(() => import("./pages/Read/ReadPage.jsx"));
 
-const router = createBrowserRouter([
+const router = createBrowserRouter(
+  [
+    {
+      path: "/",
+      element: <App />,
+      children: [
+        { index: true, element: <WatchPage /> },
+        { path: "watch", element: <WatchPage /> },
+        { path: "listen", element: <ListenPage /> },
+        { path: "read", element: <ReadPage /> },
+        { path: "write", element: <Navigate to="/read" replace /> },
+      ],
+    },
+  ],
   {
-    path: "/",
-    element: <App />,
-    children: [
-      { index: true, element: <WatchPage /> },
-      { path: "watch", element: <WatchPage /> },
-      { path: "listen", element: <ListenPage /> },
-      { path: "read", element: <ReadPage /> },
-      { path: "write", element: <Navigate to="/read" replace /> },
-    ],
-  },
-]);
+    future: {
+      // Opt into the upcoming default so the warning goes away and transitions are wrapped.
+      v7_startTransition: true,
+    },
+  }
+);
 
 // Simple loading fallback for suspense
 const PageLoading = () => (

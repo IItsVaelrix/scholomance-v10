@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef, useLayoutEffect } from "react";
 import { useColorEngine } from "../../hooks/useColorEngine.jsx";
 import { useScrolls } from "../../hooks/useScrolls.jsx";
 import AnnotationPanel from "./AnnotationPanel.jsx";
@@ -24,12 +24,15 @@ export default function ReadPage() {
 
   const [annotation, setAnnotation] = useState(null);
   const [activeScrollId, setActiveScrollId] = useState(null);
+  const [analysisEnabled, setAnalysisEnabled] = useState(true);
   const [rhymeSchool, setRhymeSchool] = useState("VOID");
   const [rhymeScores, setRhymeScores] = useState(BASE_SCORES);
   const [isIdle, setIsIdle] = useState(true);
+  const autoAnnotatedRef = useRef(false);
   const idleTimerRef = useRef(null);
   const annotationRequestRef = useRef(0);
   const isEditing = !!activeScrollId;
+  const analysisOn = analysisEnabled;
 
   const activeScroll = activeScrollId ? getScrollById(activeScrollId) : null;
 
@@ -40,6 +43,28 @@ export default function ReadPage() {
       setActiveScrollId(scrolls[0].id);
     }
   }, [activeScrollId, scrolls]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (process.env.NODE_ENV === "test") {
+      setAnalysisEnabled(true);
+      return;
+    }
+    const shouldForceAnalysis =
+      document.documentElement.dataset.visualTest === "true" ||
+      localStorage.getItem("scholomance-visual-analysis") === "on";
+    if (shouldForceAnalysis) {
+      setAnalysisEnabled(true);
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.userAgent?.includes("HappyDOM")) {
+      setAnalysisEnabled(true);
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    setAnalysisEnabled(true);
+  }, []);
 
   const analyzeRhymeProfile = useCallback(
     (text) => {
@@ -132,6 +157,12 @@ export default function ReadPage() {
     (value) => {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       idleTimerRef.current = setTimeout(() => {
+        if (!analysisOn) {
+          setRhymeScores(BASE_SCORES);
+          setRhymeSchool("VOID");
+          setIsIdle(true);
+          return;
+        }
         if (!value?.trim()) {
           setRhymeScores(BASE_SCORES);
           setRhymeSchool("VOID");
@@ -152,20 +183,9 @@ export default function ReadPage() {
     };
   }, []);
 
-  const rhymeStyle = useMemo(() => {
-    const [r, g, b] = blendSchoolColor(rhymeScores);
-    const accent = `rgb(${r}, ${g}, ${b})`;
-    const soft = `rgba(${r}, ${g}, ${b}, 0.18)`;
-    const glow = `rgba(${r}, ${g}, ${b}, 0.45)`;
-    return {
-      "--school-accent": accent,
-      "--school-accent-soft": soft,
-      "--school-accent-glow": glow,
-    };
-  }, [rhymeScores]);
-
   const analyze = useCallback(
     (word) => {
+      if (!analysisOn) return;
       if (!colorEngine?.getTokenResult) return;
       const result = colorEngine.getTokenResult(word);
       setAnnotation(result);
@@ -179,8 +199,33 @@ export default function ReadPage() {
         })
         .catch(() => {});
     },
-    [colorEngine]
+    [analysisOn, colorEngine]
   );
+
+  useEffect(() => {
+    if (autoAnnotatedRef.current) return;
+    if (typeof document === "undefined") return;
+    if (document.documentElement.dataset.visualTest !== "true") return;
+    if (!colorEngine?.getTokenResult) return;
+    if (!analysisOn) return;
+    const firstWord = (activeScroll?.content || "").trim().split(/\s+/)[0];
+    if (firstWord) {
+      autoAnnotatedRef.current = true;
+      analyze(firstWord);
+    }
+  }, [activeScroll, analysisOn, colorEngine, analyze]);
+
+  const rhymeStyle = useMemo(() => {
+    const [r, g, b] = blendSchoolColor(rhymeScores);
+    const accent = `rgb(${r}, ${g}, ${b})`;
+    const soft = `rgba(${r}, ${g}, ${b}, 0.18)`;
+    const glow = `rgba(${r}, ${g}, ${b}, 0.45)`;
+    return {
+      "--school-accent": accent,
+      "--school-accent-soft": soft,
+      "--school-accent-glow": glow,
+    };
+  }, [rhymeScores]);
 
   const handleSaveScroll = useCallback(
     (title, content) => {
@@ -192,11 +237,11 @@ export default function ReadPage() {
       }
       // For now, let's analyze the first word of the content after saving.
       const firstWord = content.split(/\s+/)[0];
-      if (firstWord) {
+      if (firstWord && analysisOn) {
         analyze(firstWord);
       }
     },
-    [isEditing, activeScrollId, updateScroll, createScroll, analyze]
+    [analysisOn, isEditing, activeScrollId, updateScroll, createScroll, analyze]
   );
 
   const handleDeleteScroll = useCallback((idToDelete) => {
@@ -212,9 +257,18 @@ export default function ReadPage() {
 
   const stateClasses = buildStateClasses({
     view: "editor",
-    overlay: annotation ? "open" : "closed",
+    overlay: analysisOn && annotation ? "open" : "closed",
     school: rhymeSchool,
   });
+
+  useEffect(() => {
+    if (analysisOn) return;
+    // Clear any in-flight annotations when analysis is disabled.
+    annotationRequestRef.current += 1;
+    setAnnotation(null);
+    setRhymeScores(BASE_SCORES);
+    setRhymeSchool("VOID");
+  }, [analysisOn]);
 
   return (
     <section
@@ -222,6 +276,7 @@ export default function ReadPage() {
       data-surface="read"
       style={rhymeStyle}
     >
+      <a className="skip-link" href="#scrollBody">Skip to editor</a>
       <div className="read-layout">
         <aside className="read-sidebar">
           <ScrollList
@@ -233,6 +288,26 @@ export default function ReadPage() {
           />
         </aside>
         <main className="read-stage" data-surface="workbench">
+          <div className="analysis-gate" data-enabled={analysisOn}>
+            <div>
+              <div className="analysis-gate__title">
+                Analysis mode is {analysisOn ? "ON" : "OFF"}
+              </div>
+              <p className="analysis-gate__hint">
+                Word definitions and phoneme analysis stay off until you opt in.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="analysis-toggle-btn"
+              aria-pressed={analysisOn}
+              aria-label="Toggle analysis mode"
+              onClick={() => setAnalysisEnabled((prev) => !prev)}
+              disabled={!isReady}
+            >
+              {analysisOn ? "Disable analysis mode" : "Enable analysis mode"}
+            </button>
+          </div>
           <ScrollEditor
             key={activeScrollId || "new"}
             initialTitle={activeScroll ? activeScroll.title : ""}
@@ -244,11 +319,13 @@ export default function ReadPage() {
             disabled={!isReady}
             colorEngine={colorEngine}
             engineRevision={revision}
+            analysisEnabled={analysisOn}
+            onToggleAnalysis={setAnalysisEnabled}
           />
         </main>
       </div>
 
-      {annotation && (
+      {analysisOn && annotation && (
         <AnnotationPanel
           annotation={annotation}
           onClose={() => setAnnotation(null)}

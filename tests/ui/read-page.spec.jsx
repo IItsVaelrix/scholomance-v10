@@ -1,5 +1,6 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { vi, describe, it, beforeEach } from "vitest";
+import { $createParagraphNode, $createTextNode, $getRoot } from "lexical";
 import ReadPage from "../../src/pages/Read/ReadPage.jsx";
 import { createColorEngine } from "../../src/engines/colorEngine/index.ts";
 
@@ -15,10 +16,34 @@ vi.mock("../../src/hooks/useColorEngine.jsx", () => ({
   }),
 }));
 
-const setEditorText = (editor, text) => {
-  editor.textContent = text;
-  editor.innerHTML = text.replace(/\n/g, "<br>");
-  fireEvent.input(editor, { target: { innerText: text } });
+const setEditorText = async (editor, text) => {
+  if (!editor) return;
+  const lexicalEditor = editor.__lexicalEditor;
+  if (lexicalEditor) {
+    await act(async () => {
+      lexicalEditor.update(() => {
+        const root = $getRoot();
+        root.clear();
+        text.split("\n").forEach((line) => {
+          const paragraph = $createParagraphNode();
+          paragraph.append($createTextNode(line));
+          root.append(paragraph);
+        });
+      });
+    });
+    return;
+  }
+
+  await act(async () => {
+    editor.textContent = text;
+    editor.innerHTML = text.replace(/\n/g, "<br>");
+    fireEvent.input(editor, { target: { innerText: text } });
+  });
+};
+
+const enableAnalysisMode = () => {
+  const toggle = screen.getByRole("button", { name: /analysis mode/i });
+  fireEvent.click(toggle);
 };
 
 describe("ReadPage UI", () => {
@@ -28,8 +53,9 @@ describe("ReadPage UI", () => {
 
   it("shows word and character count", async () => {
     const { container } = render(<ReadPage />);
+    enableAnalysisMode();
     const editor = container.querySelector("#scroll-content");
-    setEditorText(editor, "one two three four five");
+    await setEditorText(editor, "one two three four five");
 
     await waitFor(() => {
       expect(screen.getByText(/words/i)).toBeInTheDocument();
@@ -39,8 +65,9 @@ describe("ReadPage UI", () => {
 
   it("preserves line spacing", async () => {
     const { container } = render(<ReadPage />);
+    enableAnalysisMode();
     const editor = container.querySelector("#scroll-content");
-    setEditorText(editor, "First line.\nSecond line.\n\nFourth line.");
+    await setEditorText(editor, "First line.\nSecond line.\n\nFourth line.");
 
     await waitFor(() => {
       expect(container.querySelector("#scroll-content").textContent).toContain("Fourth line.");
@@ -49,11 +76,12 @@ describe("ReadPage UI", () => {
 
   it("opens annotation panel when a word is clicked", async () => {
     const { container } = render(<ReadPage />);
+    enableAnalysisMode();
     const editor = container.querySelector("#scroll-content");
-    setEditorText(editor, "The cat sat on the mat");
+    await setEditorText(editor, "The cat sat on the mat");
 
     await waitFor(() => {
-      expect(container.querySelector("#scroll-content .editor-word")).toBeTruthy();
+      expect(container.querySelector(".editor-content.overlay .editor-word")).toBeTruthy();
     });
 
     fireEvent.click(screen.getByText("cat"));
@@ -65,11 +93,12 @@ describe("ReadPage UI", () => {
 
   it("closes annotation panel", async () => {
     const { container } = render(<ReadPage />);
+    enableAnalysisMode();
     const editor = container.querySelector("#scroll-content");
-    setEditorText(editor, "Test word analysis");
+    await setEditorText(editor, "Test word analysis");
 
     await waitFor(() => {
-      expect(container.querySelector("#scroll-content .editor-word")).toBeTruthy();
+      expect(container.querySelector(".editor-content.overlay .editor-word")).toBeTruthy();
     });
 
     fireEvent.click(screen.getByText("word"));
